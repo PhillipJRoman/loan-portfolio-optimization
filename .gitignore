@@ -1,6 +1,7 @@
 .venv/
-data/
+data/raw/
 *.csv
 *.txt
 .ipynb_checkpoints/
 __pycache__/
+.DS_Store

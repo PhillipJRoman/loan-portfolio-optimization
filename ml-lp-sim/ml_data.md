@@ -1,187 +1,320 @@
 # ML Stage: Data Decisions
 
-Decisions log for the ML track (Phillip). Every data-level choice, why it was
-made, and what is still open.
+Decisions log for the ML track. What we chose, why, and what is still open.
 
-Companion doc: `feature_classification.md` covers which columns are admissible
-and why. This doc does not repeat those tables.
+Companion: `feature_notes.md` covers which columns are admissible and the
+findings worth sharing with the EDA track.
 
-**Status key**
-- `LOCKED` — decided, do not revisit without team discussion
-- `PROPOSED` — recommended, not yet ratified
-- `OPEN` — needs a decision
-- `PARKED` — deliberately deferred, revisit later
+**Status key:** `LOCKED` decided | `OPEN` needs a decision | `PARKED` deliberately
+deferred
+
+---
+
+## Two reversals
+
+Both were marked LOCKED in the first revision and both changed once we had data.
+Recording them rather than editing quietly.
+
+**Isotonic calibration: dropped.** Original reasoning was sound but rested on an
+assumption that turned out false. We assumed the models would need calibrating.
+They did not. Detail in the calibration section.
+
+**Stratified split: not stratified.** Exact stratification cost a shuffle, a
+window function, and a 2M-row string join, and bought a default-rate drift of
+~0.03%. Switched to a hash. Detail in the split section.
 
 ---
 
 ## File lineage
 
-| File | Owner | Status |
-|---|---|---|
-| `fannie_2017_features_added.parquet` | EDA track | **Frozen.** Never modify. |
-| `fannie_2017_typed.parquet` | ML track | Types corrected. Serves both tracks. |
+| File | Status |
+|---|---|
+| `fannie_2017_features_added.parquet` | Frozen. EDA track owns it. Never modify. |
+| `fannie_2017_typed.parquet` | Ours. All 123 columns, types cast. Serves both tracks. |
 
-- `LOCKED` Never overwrite a file another track is reading. Each transformation writes a new parquet.
-- `LOCKED` Cast file keeps **all 123 columns**, not just model features.
-  - EDA track needs working `OLTV` / `DTI` too. One file serves both.
-  - Feature selection lives in code as a keep-list constant, not baked into a file. Changing our mind means editing a list, not regenerating a parquet.
-  - 46MB. Trimming columns saves nothing.
+`LOCKED` Never overwrite a file another track reads.
+
+`LOCKED` Typed file keeps all 123 columns, not just model features. EDA needs
+working `OLTV` / `DTI` too, so one file serves both. Feature selection lives in
+code as a keep-list, not baked into a file. At 46MB, trimming columns saves
+nothing.
+
+`LOCKED` No third file. The split and feature prep are cheap and deterministic,
+so `df` and `feat` stay in memory. A `fannie_2017_model.parquet` was drafted and
+abandoned: writing 2M rows on every iteration cost minutes and bought nothing.
 
 ---
 
 ## Target
 
-- `LOCKED` `default_flag` = D180 delinquency **or** short sale **or** foreclosure.
-- Observed rate: **3.4143%** (verified on 2,046,851 rows).
-- Label window: cumulative over the full observation window, roughly 8 years (2017 origination, data through ~2025).
-- `LOCKED` No fixed-horizon relabeling (e.g. "default within 24 months").
-  - A 24-month window only observes through 2019, a benign pre-COVID stretch. It would discard the defaults that make this vintage interesting.
-  - The naive baseline threshold is the 3.4% historical rate, which is an 8-year COVID-inclusive number. Changing the label would break that alignment.
+`LOCKED` `default_flag` = D180 delinquency, or short sale, or foreclosure.
+Verified: 69,886 positives, 3.4143%.
+
+Label window is cumulative over the full ~8-year observation period.
+
+`LOCKED` No fixed-horizon relabeling. A 24-month window would only observe
+through 2019, a benign pre-COVID stretch, discarding the defaults that make this
+vintage interesting. It would also break the naive baseline threshold, which is
+the 8-year COVID-inclusive 3.4% rate.
 
 ---
 
 ## Type casts
 
-- `LOCKED` Seven columns arrived as `String` and were cast to numeric.
+`LOCKED` Seven columns cast to numeric. Verified: zero unparseable values, cast
+is lossless, null counts unchanged.
 
-| Column | Cast to | Reason it was text |
-|---|---|---|
-| `OLTV` | Float64 | Raw Fannie files are pipe-delimited with no type header |
-| `OCLTV` | Float64 | same |
-| `DTI` | Float64 | same |
-| `MI_PCT` | Float64 | same |
-| `CSCORE_C` | Int32 | same |
-| `NUM_BO` | Int32 | same |
-| `NO_UNITS` | Int32 | same |
-
-- Verified before casting: **zero unparseable values** across all seven. No junk strings, no `"N/A"`, no empties. Cast is lossless.
-- `LOCKED` The cast step does types **only**. No fills, no drops, no derived columns.
-  - Isolates failure. If something breaks downstream we know it was not the cast.
-  - EDA track may want to see nulls as nulls.
-- Only four raw columns arrived numeric: `ORIG_RATE`, `ORIG_UPB`, `ORIG_TERM`, `CSCORE_B`.
-
----
-
-## Null semantics
-
-The headline null counts are misleading. Two of the three large ones are not
-missing data at all.
-
-| Column | Nulls | % | Meaning |
+| Column | To | Column | To |
 |---|---|---|---|
-| `CSCORE_C` | 1,083,143 | 52.9% | **Structural.** No co-borrower exists. Aligns exactly with `NUM_BO = 1`. |
-| `MI_PCT` | 1,432,111 | 70.0% | **Structural.** No mortgage insurance exists. MI is required above 80 LTV; nulls are the sub-80 loans. |
-| `DTI` | 340 | 0.017% | **Genuinely missing.** |
-| `OLTV`, `OCLTV`, `NUM_BO`, `NO_UNITS` | 0 | 0% | Clean. |
+| `OLTV` | Float64 | `CSCORE_C` | Int32 |
+| `OCLTV` | Float64 | `NUM_BO` | Int32 |
+| `DTI` | Float64 | `NO_UNITS` | Int32 |
+| `MI_PCT` | Float64 | | |
 
-- `LOCKED` Do **not** mean-impute `CSCORE_C` or `MI_PCT`. Filling `MI_PCT` with a mean of ~27% would assert that 1.4M uninsured loans carry insurance.
-- `PROPOSED` `MI_PCT` null fills to **0**. Zero coverage is the true value, not a guess.
-- `PROPOSED` `CSCORE_C` gets a missing indicator, not a numeric fill. There is no "co-borrower score" to estimate when there is no co-borrower.
-- `OPEN` `DTI`'s 340 nulls: drop the rows or impute. 0.017% either way, so this is a footnote, but it needs a stated rule.
-- `OPEN` `CSCORE_B` nulls: 1,573 rows (0.08%), visible as `credit_grade = "Unknown"`. Recommend a missing indicator over dropping, since missing FICO may itself be signal.
+`LOCKED` The cast step does types only. No fills, no drops, no derived columns.
+Isolates failure, and the EDA track may want nulls as nulls.
 
-**Note for EDA track:** "70% missing, unusable" is the wrong read on `MI_PCT`. The nulls are informative.
+Verified ranges, no sentinels: `OLTV` max 97 with zero above 100, `DTI` max 63,
+`CSCORE_C` min 620, `MI_PCT` min 6, `ORIG_UPB` 969 distinct.
 
 ---
 
-## Feature admissibility
+## Null rules
 
-- `LOCKED` A feature is admissible only if a lender could have known it on the day the loan closed.
-- `LOCKED` Roughly 60 of 123 columns are performance-era or disposition-era and are excluded. Full classification in `feature_classification.md`.
-- Highest-severity leaks: `max_dlq_ever` and `zero_bal_code` construct the label directly. Either one returns AUC near 1.00.
-- Named trap: `ORIGINAL_LIST_PRICE` is the **REO listing price** of the foreclosed property, not the purchase price. Origination-sounding name, perfect leakage.
+All implemented in feature prep. Verified: zero nulls after.
 
-### Collinear pairs (never include both)
+| Column | Nulls | Rule | Why |
+|---|---|---|---|
+| `MI_PCT` | 1,432,111 | → 0 | Structural. Zero coverage is the true value. |
+| `MI_TYPE` | 1,432,111 | → `"NONE"` | Same loans, confirms the reading. |
+| `CSCORE_C` | 1,083,143 | → 0 + `has_coborrower` | Structural. No co-borrower score to estimate. The 0 is inert padding; the indicator carries the meaning. |
+| `CSCORE_B` | 1,573 | → median + `fico_missing` | Missing FICO may itself be signal. |
+| `DTI` | 340 | → median | 0.017%. Too small for an indicator to be estimable. |
 
-- `CSCORE_B` / `credit_grade`
-- `CSCORE_B` / `ORIG_CLASSIC_FICO`
-- `FIRST_FLAG` / `is_first_time`
-- `HOMEREADY_PROGRAM_INDICATOR` / `is_homeready`
-
-### Division of labor between FICO representations
-
-- `LOCKED` `CSCORE_B` (continuous) is the model feature.
-- `LOCKED` `credit_grade` (FICO bins: Exceptional / Very Good / Good / Fair-Poor / Unknown) is for EDA and the naive baseline scorer. Not a model feature.
+`LOCKED` No mean-imputation on `CSCORE_C` or `MI_PCT`. Filling `MI_PCT` at ~27%
+would assert that 1.4M uninsured loans carry insurance.
 
 ---
 
-## Split strategy
+## Features
 
-- `LOCKED` **Stratified random** on `default_flag`, three-way: train / calibration / test.
-- `LOCKED` **No temporal split.**
-  - Within a single vintage, every loan lived through the same calendar: same 2018, same 2020, same forbearance programs. An origination-date split does not test macro generalization, only whether autumn originations differ from spring ones.
-  - A real out-of-time test requires a second vintage (train 2017, score 2018), not a slice of 2017.
+`LOCKED` Admissibility rule: knowable on the day the loan closed. Roughly 60 of
+123 columns fail it. Full classification in `feature_notes.md`.
 
-| Split | Purpose |
+**Final set: 26 features.** 11 numeric + 5 flags + 10 categorical.
+
+- Numeric: `CSCORE_B`, `CSCORE_C`, `OLTV`, `OCLTV`, `DTI`, `ORIG_RATE`,
+  `ORIG_UPB`, `ORIG_TERM`, `NUM_BO`, `NO_UNITS`, `MI_PCT`
+- Flags: `is_first_time`, `is_homeready`, `is_hfa`, `has_coborrower`,
+  `fico_missing`
+- Categorical: `CHANNEL`, `SELLER`, `PURPOSE`, `PROP`, `OCC_STAT`, `STATE`,
+  `MI_TYPE`, `HIGH_BALANCE_LOAN_INDICATOR`,
+  `PROPERTY_INSPECTION_WAIVER_INDICATOR`, `RELOCATION_MORTGAGE_INDICATOR`
+
+**Dropped:**
+
+| Column | Why |
 |---|---|
-| Train | Fit LogReg / XGBoost / LightGBM. Also build the FICO x LTV baseline scorer here, and only here. |
-| Calibration | Fit isotonic. Untouched by training. |
-| Test | Evaluate AUC + calibration curves. This is the applicant pool feeding the LP. |
+| `PRODUCT`, `PPMT_FLG`, `IO` | Constants. Verified `n_unique = 1`. |
+| ARM block | All-FRM book confirms it is dead. |
+| `FIRST_FLAG` | Verified exact duplicate of `is_first_time`. Cross-tab shows N→0, Y→1, no off-diagonal. |
+| `credit_grade` | Reserved for the naive scorer. Collinear with `CSCORE_B`. |
+| `orig_quarter` | Admissible, but feeding origination timing to the model invites it to learn the seasoning artifact we treat as a limitation. |
 
-- `LOCKED` PDs feeding the LP must come from loans the model never trained on.
-- At 60/20/20 and 3.4%, each held-out split carries roughly 13,600 positives. Ample for isotonic.
+`LOCKED` `SELLER` stays. It carries signal beyond FICO/LTV/DTI: rates span
+2.21%-8.48% and loan mix does not explain it. Cardinality is 38, not hundreds,
+because Fannie pre-buckets small originators into `Other`.
 
-### Documented limitation
+`LOCKED` Quicken merged. `Quicken Loans, Llc` and `Quicken Loans Inc.` are the
+same book (3.04% vs 3.06%, FICO 740 vs 741). 38 → 37.
 
-Seasoning bias: a December 2017 loan has ~0.9 fewer years of exposure than a
-January 2017 loan. Mortgage default hazard peaks around years 2 to 4 and is
-nearly flat by year 7, so with 8 years of observation the differential falls in a
-region where little is still happening. Named as a limitation, not designed
-around.
-
----
-
-## Model and calibration
-
-- `LOCKED` Three models: Logistic Regression (interpretable baseline), XGBoost, LightGBM.
-- `LOCKED` Evaluated on **AUC and calibration curves**, not accuracy. At 3.4% base rate, predicting "never defaults" scores 96.6% accuracy and is useless.
-- `LOCKED` Calibration via **isotonic regression** on a dedicated calibration split.
-  - Enough positives at this scale that isotonic will not overfit.
-  - No reason to force a sigmoid shape.
-- `OPEN` Class imbalance handling: class weights, undersampling, or nothing. Decide after seeing baseline AUC and calibration.
-  - Note: resampling distorts predicted probabilities, and calibrated probabilities are the entire product of this stage. Class weights are the safer default if anything is needed at all.
+`LOCKED` `CSCORE_B` is the model feature; `credit_grade` is for EDA and the naive
+scorer. Never both.
 
 ---
 
-## Economics constants
+## Split
 
-Not ML decisions, but they consume the ML output, so recorded here.
+`LOCKED` Hash-based: `hash(LOAN_ID, seed=591) % 100`. 0-59 train, 60-79 calib,
+80-99 test.
 
-| Column | Value | Source |
+Deterministic, so any teammate reruns and gets identical splits with no stored
+seed. Pure column math: no shuffle, no window, no join.
+
+| Split | n | Positives | Rate |
+|---|---|---|---|
+| train | 1,227,572 | 41,810 | 0.034059 |
+| calib | 409,353 | 14,094 | 0.034430 |
+| test | 409,926 | 13,982 | 0.034109 |
+
+**Reversal from stratified.** Drift is ~0.03%, verified: all three splits landed
+within one standard deviation of expected positives. Invisible to AUC and
+calibration. Verified empirically instead of guaranteed structurally.
+
+`LOCKED` No temporal split. Within one vintage every loan lived through the same
+calendar, so an origination-date split only tests whether autumn originations
+differ from spring ones. A real out-of-time test needs a second vintage.
+
+`LOCKED` PDs feeding the LP come from `test`, which the model never trained on.
+
+**Documented limitation.** Seasoning: a December 2017 loan has ~0.9 fewer years of
+exposure than a January one. Default hazard peaks around years 2-4 and is flat by
+year 7, so with 8 years of data the gap falls where little is happening.
+
+---
+
+## Models
+
+`LOCKED` Evaluated on AUC and calibration, not accuracy. At a 3.4% base rate,
+predicting "never defaults" scores 96.6% accuracy and is useless.
+
+| Model | Test AUC | Train | Gap | Brier | ECE | Fit |
+|---|---|---|---|---|---|---|
+| Logistic regression | 0.7705 | 0.7731 | 0.0026 | 0.031580 | 0.00103 | 6s |
+| XGBoost | 0.7781 | 0.8165 | 0.0384 | 0.031481 | 0.00123 | 6s |
+| LightGBM | 0.7768 | 0.8377 | 0.0609 | 0.031502 | 0.00114 | 11s |
+| CatBoost | 0.7750 | 0.7814 | 0.0064 | 0.031480 | 0.00086 | 75s |
+
+Baseline: synthetic PD generator scored 0.7178 on three hand-set coefficients.
+
+**The signal is mostly linear.** Trees beat logistic regression by 0.006-0.008.
+Real at 410k rows, small in practice. CatBoost was run as a check, not a
+candidate: it is built for high-cardinality categoricals and overfitting
+resistance, and its ordered boosting cut the gap from 0.038 to 0.0064 while
+gaining no AUC. So overfitting was never the constraint. The ceiling is the data.
+
+`LOCKED` **CatBoost selected.** AUC and Brier are ties (0.0031 is inside noise at
+13,982 positives; Brier separates at the sixth decimal). The train-test gap does
+not tie: 6x smaller. That matters because our calibration result carries an IID
+caveat, and shipping the model with the larger gap alongside that caveat is a
+weak position.
+
+`LOCKED` No class weighting or resampling. Both distort predicted probabilities,
+and calibrated probabilities are the product of this stage. This was `OPEN`; the
+calibration result closed it.
+
+`PARKED` Tuning. `depth=6` / 400 iterations were a guess. The ceiling argument
+says tuning buys 0.001-0.003. Track 1 delivers the tuned model in week 6 per the
+launch report.
+
+---
+
+## Calibration
+
+`LOCKED` **Ship raw predictions. No isotonic.** Reverses the original decision.
+
+All four models were already calibrated at ECE 0.0009-0.0012 against a base rate
+of 3.4%, meaning the average bin is off by a tenth of a percentage point.
+
+Expected in hindsight: all four minimize log-loss, a proper scoring rule that is
+lowest exactly when predicted probability equals true probability. Calibration is
+what training was already asking for. Add 1.2M rows and no class weighting and
+there is little left to fix.
+
+**ECE has a floor.** At ~41k loans per bin, sampling noise is ~±0.0008, so a
+perfect model would still score ~0.0006 here. CatBoost at 0.00086 is 1.4x the
+floor: about as good as this test set can measure.
+
+**Isotonic was tested and did nothing.**
+
+| model | ECE raw | ECE iso | delta | AUC raw | AUC iso |
+|---|---|---|---|---|---|
+| logreg | 0.00103 | 0.00117 | +0.00014 | 0.7705 | 0.7702 |
+| xgboost | 0.00123 | 0.00100 | -0.00023 | 0.7781 | 0.7780 |
+| lightgbm | 0.00114 | 0.00096 | -0.00018 | 0.7768 | 0.7766 |
+| catboost | 0.00086 | 0.00094 | +0.00008 | 0.7750 | 0.7747 |
+
+Every delta is below the measurement floor. Two improved, two worsened: that is
+noise. It cost AUC on all four, because isotonic maps distinct predictions to the
+same value and destroys ranking. And it introduced PD = 0 on 3,168 CatBoost loans,
+which would tell the LP those loans cannot default.
+
+**Platt considered, declined.** It would not have produced either problem: a
+sigmoid never reaches 0, and it is strictly increasing so it preserves ranking.
+But with nothing to correct, the best case is doing nothing gracefully instead of
+doing nothing clumsily. One null result is enough.
+
+**Why isotonic looked right going in:** 70k positives, so it cannot overfit at
+that scale. True for the middle of the distribution. It broke in the tails, where
+the blocks thin to single digits regardless of total sample size. The max PDs
+came back as 0.75 and 4/9 and 2/7, which are fractions of a handful of loans.
+
+**IID caveat, for the report.** Train and test were assigned at random, so both
+come from the same 2017 pool and look alike (independent and identically
+distributed). That is the easiest case for calibration to carry over, and not
+what a deployed model faces. A lender trains on old vintages and scores
+applicants in a different economy. State this rather than claiming the models are
+calibrated in general.
+
+---
+
+## Naive baseline scorer
+
+`LOCKED` Rule-based lookup: default rate by `credit_grade` x LTV band, built on
+`train` only.
+
+Exists because our claim is that calibrated probabilities plus optimization beat
+a naive rule. If the naive rule ranked by CatBoost's PDs, both strategies would
+share the same risk numbers and we would only be testing LP vs greedy.
+
+- FICO half: `credit_grade`, already built. 5 levels.
+- LTV half: cuts at 60/70/80/90/95. Mirrors underwriting; 80 is the MI boundary.
+- 5 x 6 = 30 buckets.
+- Buckets under 500 loans fall back to the FICO grade's overall rate. Still
+  rule-based, just coarser.
+
+`LOCKED` Built on train only. Using test would leak answers into the baseline and
+flatter it.
+
+---
+
+## Economics
+
+Not ML decisions, but they consume the ML output.
+
+| Column | Value |
+|---|---|
+| `lgd` | Flat 0.30. Verified: 1 distinct value, no nulls, identical across both classes. Sirignano good-economy number. |
+| `loss_if_default` | `lgd` x `ORIG_UPB` |
+| `interest_income_7yr` | 7-year interest, horizon-matched to the label |
+
+**Objective:** `c_i = (1 - PD_i) x interest_income_7yr_i - PD_i x loss_if_default_i`
+
+**Why 7 years.** PD is an ~8-year cumulative probability. Pairing it with 30-year
+interest would bias the objective toward risk: upside accrues 30 years, downside
+has 8 to appear. Also proxies prepayment (30-year median life ~7 years) and is
+not a token slice, since ~36% of lifetime interest is earned in the first 7 years.
+
+**Limitations:**
+
+1. `loss_if_default` uses `ORIG_UPB`, but a loan defaulting in year 4 has
+   amortized to ~90% of original. Loss overstated ~10%. Conservative and roughly
+   proportional, so minimal effect on LP ranking.
+2. Defaulted loans are credited zero interest, when payments were collected until
+   default. Also conservative.
+3. **Capital velocity unmodeled.** A 15-year returns ~$81k principal by year 7 vs
+   ~$28k for a 30-year on the same $200k. Worth nothing in a single-period model.
+   23% of the book is not a 30-year loan, so this is not a corner case.
+
+---
+
+## Open and parked
+
+| Item | Status | Note |
 |---|---|---|
-| `lgd` | Flat **0.30**, all rows | Sirignano et al. good-economy round number |
-| `loss_if_default` | `lgd` x `ORIG_UPB` | derived |
-| `interest_income_7yr` | 7-year interest | horizon-matched to the label |
+| Tuning | `PARKED` | Track 1 owns it, week 6. |
+| Applicant pool construction | `PARKED` | Sampled pools (n=20k, repeated) give error bars on the headline claim vs one shot at the full test split. Does not block. |
+| Attribution 2x2 | `PARKED` | Whether the report separates "gain from better PDs" vs "gain from optimization." Scorer and selector are swappable regardless. |
+| `MSA` / `ZIP` | `PARKED` | Admissible, high cardinality. Out of first pass. |
+| Representative FICO | `PARKED` | Fannie's convention is the lower of borrower scores. `min(CSCORE_B, CSCORE_C)` coalesced to `CSCORE_B` is what an underwriter uses. |
+| Second-lien feature | `PARKED` | `OCLTV - OLTV`. `OCLTV` maxes at 114 vs `OLTV` at 97, so real subordinate financing exists. |
 
-- Verified: `lgd` has 1 distinct value, 0.30, zero nulls, identical across both classes. Confirmed flat, not back-computed from realized foreclosure outcomes.
-- `interest_income_7yr` is horizon-matched: PD is an ~8-year cumulative probability, so pairing it with 30-year lifetime interest would bias the objective toward risk (upside accrues 30 years, downside has 8 to appear). Also serves as a rough prepayment proxy (30-year mortgages have a median life near 7 years).
-
-### Objective
-
-```
-c_i = (1 - PD_i) x interest_income_7yr_i  -  PD_i x loss_if_default_i
-```
-
-### Stated limitations
-
-- `loss_if_default` uses `ORIG_UPB`, but a loan defaulting in year 4 has amortized to ~90% of original balance. Loss overstated ~10%. Conservative and roughly proportional across loans, so minimal effect on LP ranking.
-- The objective credits defaulted loans with zero interest income, when payments were collected until default. Also conservative.
-
----
-
-## Open decisions
-
-| Item | Status | Notes |
-|---|---|---|
-| `DTI` null rule | `OPEN` | 340 rows. Drop or impute. |
-| `CSCORE_B` null rule | `OPEN` | 1,573 rows. Indicator recommended. |
-| Class imbalance | `OPEN` | Decide after baselines. |
-| `MSA` / `ZIP` | `PARKED` | Legitimate but high cardinality. Out of first pass. |
-| ARM columns | `PARKED` | Admissible but likely near-zero variance for a 2017 fixed-rate book. Check variance, expect to drop the block. |
-| `ISSUE_SCOREB` / `ISSUE_SCOREC` / `ISSUE_CLASSIC_FICO` | `PROPOSED` exclude | Measured at securitization, not origination. Near-identical to `CSCORE_B`, so excluding costs nothing and keeps the origination-only rule clean. |
-| Representative FICO | `PARKED` | Fannie convention is the **lower** of borrower scores. `min(CSCORE_B, CSCORE_C)` coalesced to `CSCORE_B` is likely stronger than either alone. Feature engineering, revisit after baselines. |
-| Applicant pool construction | `PARKED` | Sampled pools (n=20k, repeated) give error bars on the headline claim vs one shot at the full test split. Does not block ML. |
-| Attribution 2x2 | `PARKED` | Whether the report needs to separate "gain from better PDs" vs "gain from optimization." Costs nothing to keep open; scorer and selector are being written as swappable pieces regardless. |
+**Parked for stage 3: expected return may be positive everywhere.** Setting
+`c_i = 0` gives break-even `PD = I / (L + I)`. For a 30-year at 4.29%,
+`I/UPB ≈ 0.26`, so break-even is ~47%. For a 15-year at 3.48%, ~40%. The top
+decile averages 12% PD. If no loan clears 40%, every loan has positive expected
+return, the budget constraint does all the work, and the average-PD ceiling is
+the only real risk control. Check max PD in stage 3.
 
 ---
 
@@ -190,3 +323,4 @@ c_i = (1 - PD_i) x interest_income_7yr_i  -  PD_i x loss_if_default_i
 | Date | Change |
 |---|---|
 | 2026-07-16 | Initial. Lineage, target, casts, null semantics, split, calibration, economics. |
+| 2026-07-16 | Rev 2. Casts and split verified. Null rules implemented and locked. Feature set final at 26. Four models fit; CatBoost selected. Isotonic tested and dropped, reversing the original decision. Stratified split reversed to hash. Class imbalance closed as no-weighting. Naive scorer design locked. |

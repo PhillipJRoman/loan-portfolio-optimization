@@ -1,0 +1,170 @@
+{
+  "model": "catboost",
+  "selected": true,
+  "saved_at": "2026-07-16T21:44:13.217480+00:00",
+  "auc_train": 0.7814136218499095,
+  "auc_test": 0.7749667843671347,
+  "auc_gap": 0.006446837482774748,
+  "brier_test": 0.031480182851566486,
+  "ece_test": 0.0008600005854715226,
+  "ece_noise_floor": 0.0006,
+  "mean_pred": 0.03392189881276828,
+  "actual_rate": 0.03410859520986715,
+  "calibration_bins": [
+    {
+      "bin": 0,
+      "n": 40993,
+      "pred": 0.0031,
+      "obs": 0.0024,
+      "gap": -0.0008,
+      "ratio": 0.75
+    },
+    {
+      "bin": 1,
+      "n": 40992,
+      "pred": 0.0061,
+      "obs": 0.0055,
+      "gap": -0.0006,
+      "ratio": 0.9
+    },
+    {
+      "bin": 2,
+      "n": 40993,
+      "pred": 0.0093,
+      "obs": 0.0096,
+      "gap": 0.0003,
+      "ratio": 1.03
+    },
+    {
+      "bin": 3,
+      "n": 40992,
+      "pred": 0.0131,
+      "obs": 0.0124,
+      "gap": -0.0007,
+      "ratio": 0.95
+    },
+    {
+      "bin": 4,
+      "n": 40993,
+      "pred": 0.0179,
+      "obs": 0.0175,
+      "gap": -0.0004,
+      "ratio": 0.98
+    },
+    {
+      "bin": 5,
+      "n": 40993,
+      "pred": 0.0242,
+      "obs": 0.0243,
+      "gap": 0.0001,
+      "ratio": 1.01
+    },
+    {
+      "bin": 6,
+      "n": 40992,
+      "pred": 0.0327,
+      "obs": 0.0317,
+      "gap": -0.0009,
+      "ratio": 0.97
+    },
+    {
+      "bin": 7,
+      "n": 40992,
+      "pred": 0.0449,
+      "obs": 0.0458,
+      "gap": 0.0009,
+      "ratio": 1.02
+    },
+    {
+      "bin": 8,
+      "n": 40993,
+      "pred": 0.0651,
+      "obs": 0.0677,
+      "gap": 0.0026,
+      "ratio": 1.04
+    },
+    {
+      "bin": 9,
+      "n": 40993,
+      "pred": 0.1228,
+      "obs": 0.1241,
+      "gap": 0.0012,
+      "ratio": 1.01
+    }
+  ],
+  "params": {
+    "iterations": "400",
+    "learning_rate": "0.05",
+    "depth": "6"
+  },
+  "features": {
+    "numeric": [
+      "CSCORE_B",
+      "CSCORE_C",
+      "OLTV",
+      "OCLTV",
+      "DTI",
+      "ORIG_RATE",
+      "ORIG_UPB",
+      "ORIG_TERM",
+      "NUM_BO",
+      "NO_UNITS",
+      "MI_PCT"
+    ],
+    "flags": [
+      "is_first_time",
+      "is_homeready",
+      "is_hfa",
+      "has_coborrower",
+      "fico_missing"
+    ],
+    "categorical": [
+      "CHANNEL",
+      "SELLER",
+      "PURPOSE",
+      "PROP",
+      "OCC_STAT",
+      "STATE",
+      "MI_TYPE",
+      "HIGH_BALANCE_LOAN_INDICATOR",
+      "PROPERTY_INSPECTION_WAIVER_INDICATOR",
+      "RELOCATION_MORTGAGE_INDICATOR"
+    ],
+    "order": [
+      "CSCORE_B",
+      "CSCORE_C",
+      "OLTV",
+      "OCLTV",
+      "DTI",
+      "ORIG_RATE",
+      "ORIG_UPB",
+      "ORIG_TERM",
+      "NUM_BO",
+      "NO_UNITS",
+      "MI_PCT",
+      "is_first_time",
+      "is_homeready",
+      "is_hfa",
+      "has_coborrower",
+      "fico_missing",
+      "CHANNEL",
+      "SELLER",
+      "PURPOSE",
+      "PROP",
+      "OCC_STAT",
+      "STATE",
+      "MI_TYPE",
+      "HIGH_BALANCE_LOAN_INDICATOR",
+      "PROPERTY_INSPECTION_WAIVER_INDICATOR",
+      "RELOCATION_MORTGAGE_INDICATOR"
+    ]
+  },
+  "split": {
+    "seed": 591,
+    "rule": "hash(LOAN_ID) % 100: 0-59 train, 60-79 calib, 80-99 test",
+    "n_train": 1227572,
+    "n_test": 409926
+  },
+  "calibration_applied": null,
+  "notes": "Untuned scaffolding. Raw predictions, no isotonic."
+}

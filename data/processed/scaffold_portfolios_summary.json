@@ -1,0 +1,67 @@
+{
+  "budget": 9378234900.0,
+  "budget_frac": 0.1,
+  "constraints": {
+    "pd_ceiling": 0.03,
+    "state_cap": 0.08,
+    "ft_floor": 0.2,
+    "homeready_floor": 0.0505,
+    "hfa_floor": 0.0256
+  },
+  "portfolios": [
+    {
+      "score": "FICO\u00d7LTV",
+      "rule": "risk-sort",
+      "column": "x__FICOxLTV__risk-sort",
+      "real_return": 2350622613.640952,
+      "funded_upb": 9377874000.0,
+      "n_funded": 43386,
+      "avg_default_risk": 0.008820993829451854
+    },
+    {
+      "score": "FICO\u00d7LTV",
+      "rule": "greedy-return",
+      "column": "x__FICOxLTV__greedy-return",
+      "real_return": 2748026721.9219418,
+      "funded_upb": 9378209000.0,
+      "n_funded": 45047,
+      "avg_default_risk": 0.04310503460637062
+    },
+    {
+      "score": "FICO\u00d7LTV",
+      "rule": "LP",
+      "column": "x__FICOxLTV__LP",
+      "real_return": 2727434912.73077,
+      "funded_upb": 9378234900.0,
+      "n_funded": 48985,
+      "avg_default_risk": 0.04367610110594767
+    },
+    {
+      "score": "CatBoost",
+      "rule": "risk-sort",
+      "column": "x__CatBoost__risk-sort",
+      "real_return": 2311691389.0195656,
+      "funded_upb": 9378122000.0,
+      "n_funded": 43892,
+      "avg_default_risk": 0.003336114317959389
+    },
+    {
+      "score": "CatBoost",
+      "rule": "greedy-return",
+      "column": "x__CatBoost__greedy-return",
+      "real_return": 2820368224.6224017,
+      "funded_upb": 9378068000.0,
+      "n_funded": 45429,
+      "avg_default_risk": 0.024878412088948983
+    },
+    {
+      "score": "CatBoost",
+      "rule": "LP",
+      "column": "x__CatBoost__LP",
+      "real_return": 2798480975.5528355,
+      "funded_upb": 9378234900.0,
+      "n_funded": 49349,
+      "avg_default_risk": 0.024731752573232898
+    }
+  ]
+}

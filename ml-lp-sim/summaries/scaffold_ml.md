@@ -551,8 +551,8 @@ shape: (18, 6)
 │ Caliber Home Loans, Inc.                  ┆ 24056  ┆ 0.0425 ┆ 741.0 ┆ 77.0 ┆ 35.4 │
 │ Flagstar Bank, Fsb                        ┆ 40402  ┆ 0.0417 ┆ 747.0 ┆ 71.4 ┆ 35.0 │
 │ Wells Fargo Bank, N.A.                    ┆ 309551 ┆ 0.0414 ┆ 753.0 ┆ 76.2 ┆ 34.9 │
-│ Nationstar Mortgage, Llc                  ┆ 26094  ┆ 0.0383 ┆ 737.0 ┆ 71.4 ┆ 35.3 │
 │ Movement Mortgage, Llc                    ┆ 28701  ┆ 0.0383 ┆ 750.0 ┆ 81.5 ┆ 35.4 │
+│ Nationstar Mortgage, Llc                  ┆ 26094  ┆ 0.0383 ┆ 737.0 ┆ 71.4 ┆ 35.3 │
 │ Amerihome Mortgage Company, Llc           ┆ 33537  ┆ 0.0374 ┆ 746.0 ┆ 76.5 ┆ 35.8 │
 │ United Shore Financial Services, Llc Dba… ┆ 49905  ┆ 0.0371 ┆ 757.0 ┆ 75.5 ┆ 36.1 │
 │ Truist Bank (Formerly Suntrust Bank)      ┆ 45024  ┆ 0.0357 ┆ 757.0 ┆ 71.8 ┆ 34.0 │
@@ -718,11 +718,11 @@ shape: (5, 5)
 │ ---       ┆ ---      ┆ ---       ┆ ---                 ┆ ---               │
 │ f64       ┆ f64      ┆ f64       ┆ f64                 ┆ f64               │
 ╞═══════════╪══════════╪═══════════╪═════════════════════╪═══════════════════╡
-│ 72.0      ┆ 25000.0  ┆ 3.0       ┆ 4849.222202         ┆ -17411.0          │
-│ 36.0      ┆ 60000.0  ┆ 4.25      ┆ 16723.104918        ┆ -49374.0          │
-│ 60.0      ┆ 73000.0  ┆ 3.5       ┆ 16618.006304        ┆ -53332.0          │
-│ 60.0      ┆ 60000.0  ┆ 3.375     ┆ 13151.726837        ┆ -44085.0          │
-│ 60.0      ┆ 25000.0  ┆ 3.375     ┆ 5479.886182         ┆ -18369.0          │
+│ 72.0      ┆ 25000.0  ┆ 3.0       ┆ 2348.616475         ┆ 2349.0            │
+│ 36.0      ┆ 60000.0  ┆ 4.25      ┆ 4012.30315          ┆ 4012.0            │
+│ 60.0      ┆ 73000.0  ┆ 3.5       ┆ 6679.84297          ┆ 6680.0            │
+│ 60.0      ┆ 60000.0  ┆ 3.375     ┆ 5288.951219         ┆ 5289.0            │
+│ 60.0      ┆ 25000.0  ┆ 3.375     ┆ 2203.729675         ┆ 2204.0            │
 └───────────┴──────────┴───────────┴─────────────────────┴───────────────────┘
 ```
 
@@ -797,8 +797,8 @@ a single-period model. The LP cannot see capital velocity.
 - Mortgage PD models typically land 0.75 to 0.80.
 
 ```
-matrices :   0.5s   train=(1227572, 26)  positives=41,810
-fit      :   6.1s   width=130
+matrices :   0.2s   train=(1227572, 26)  positives=41,810
+fit      :   5.8s   width=130
 
 AUC train: 0.7731
 AUC test : 0.7705   (synthetic PD was 0.7178)
@@ -828,9 +828,9 @@ mean pred: 0.034125   actual: 0.034109
 - Train-test AUC gap. Trees overfit where LogReg cannot, so a gap above ~0.02 means depth needs pulling in.
 
 ```
-xgboost  :   6.4s
+xgboost  :   6.2s
   AUC train 0.8165   test 0.7781
-lightgbm :  10.7s
+lightgbm :  11.1s
   AUC train 0.8377   test 0.7768
 
 --- test AUC ---
@@ -886,7 +886,7 @@ still hand back PDs that are 40% too high. Calibration decides this.
 **Expect** LogReg near-calibrated (its intercept forces the mean to match) and the trees overconfident in the tail, per their train-test gaps.
 
 ```
-catboost :  75.3s
+catboost :  73.6s
   AUC train 0.7814   test 0.7750   gap 0.0064
 
   logreg 0.7705 | xgboost 0.7781 | lightgbm 0.7768

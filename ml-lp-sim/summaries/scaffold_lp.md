@@ -86,8 +86,8 @@ shape: (2, 6)
 │ ---           ┆ ---    ┆ ---         ┆ ---     ┆ ---       ┆ ---            │
 │ i8            ┆ u32    ┆ f64         ┆ f64     ┆ f64       ┆ f64            │
 ╞═══════════════╪════════╪═════════════╪═════════╪═══════════╪════════════════╡
-│ 0             ┆ 312424 ┆ 0.0299      ┆ 0.0296  ┆ 4.11      ┆ 0.252          │
-│ 1             ┆ 97502  ┆ 0.0477      ┆ 0.0478  ┆ 4.239     ┆ 0.2498         │
+│ 0             ┆ 312424 ┆ 0.0299      ┆ 0.0296  ┆ 4.11      ┆ 0.2444         │
+│ 1             ┆ 97502  ┆ 0.0477      ┆ 0.0478  ┆ 4.239     ┆ 0.2481         │
 └───────────────┴────────┴─────────────┴─────────┴───────────┴────────────────┘
 
 --- by is_homeready ---
@@ -97,8 +97,8 @@ shape: (2, 6)
 │ ---          ┆ ---    ┆ ---         ┆ ---     ┆ ---       ┆ ---            │
 │ i8           ┆ u32    ┆ f64         ┆ f64     ┆ f64       ┆ f64            │
 ╞══════════════╪════════╪═════════════╪═════════╪═══════════╪════════════════╡
-│ 0            ┆ 389244 ┆ 0.0328      ┆ 0.0326  ┆ 4.136     ┆ 0.2519         │
-│ 1            ┆ 20682  ┆ 0.0586      ┆ 0.0583  ┆ 4.239     ┆ 0.2439         │
+│ 0            ┆ 389244 ┆ 0.0328      ┆ 0.0326  ┆ 4.136     ┆ 0.2454         │
+│ 1            ┆ 20682  ┆ 0.0586      ┆ 0.0583  ┆ 4.239     ┆ 0.2425         │
 └──────────────┴────────┴─────────────┴─────────┴───────────┴────────────────┘
 
 --- by is_hfa ---
@@ -108,7 +108,7 @@ shape: (2, 6)
 │ ---    ┆ ---    ┆ ---         ┆ ---     ┆ ---       ┆ ---            │
 │ i8     ┆ u32    ┆ f64         ┆ f64     ┆ f64       ┆ f64            │
 ╞════════╪════════╪═════════════╪═════════╪═══════════╪════════════════╡
-│ 0      ┆ 399416 ┆ 0.0326      ┆ 0.0323  ┆ 4.129     ┆ 0.2516         │
+│ 0      ┆ 399416 ┆ 0.0326      ┆ 0.0323  ┆ 4.129     ┆ 0.2453         │
 │ 1      ┆ 10510  ┆ 0.0915      ┆ 0.0941  ┆ 4.601     ┆ 0.2457         │
 └────────┴────────┴─────────────┴─────────┴───────────┴────────────────┘
 
@@ -119,8 +119,8 @@ shape: (2, 6)
 │ ---           ┆ ---    ┆ ---         ┆ ---     ┆ ---       ┆ ---            │
 │ i8            ┆ u32    ┆ f64         ┆ f64     ┆ f64       ┆ f64            │
 ╞═══════════════╪════════╪═════════════╪═════════╪═══════════╪════════════════╡
-│ 0             ┆ 378734 ┆ 0.0312      ┆ 0.0309  ┆ 4.123     ┆ 0.252          │
-│ 1             ┆ 31192  ┆ 0.0697      ┆ 0.0704  ┆ 4.361     ┆ 0.2445         │
+│ 0             ┆ 378734 ┆ 0.0312      ┆ 0.0309  ┆ 4.123     ┆ 0.2454         │
+│ 1             ┆ 31192  ┆ 0.0697      ┆ 0.0704  ┆ 4.361     ┆ 0.2436         │
 └───────────────┴────────┴─────────────┴─────────┴───────────┴────────────────┘
 ```
 
@@ -275,16 +275,13 @@ none, or part of a loan. Two reasons.
   fund a fraction of a loan pool.
 
 ```
-Set parameter Username
-Set parameter LicenseID to value 2801014
-Academic license - for non-commercial use only - expires 2027-03-31
 status         : 2  (2 = optimal)
-objective      : $  2.820B expected return
+objective      : $  2.818B expected return
 budget used    : $  9.378B of $9.378B
-loans funded   : 45,430 full or partial
-  fully (x=1)  : 45,429
+loans funded   : 44,833 full or partial
+  fully (x=1)  : 44,832
   partial      : 1
-return on funded: 30.07%
+return on funded: 30.05%
 ```
 
 ## Finding: budget-only LP works and sets the return ceiling
@@ -323,12 +320,12 @@ eat it.
 
 ```
 status         : 2  (2 = optimal)
-objective      : $  2.798B   (ceiling was $2.820B)
-cost of constraints: $   21.9M  (0.78% of ceiling)
+objective      : $  2.796B   (ceiling was $2.820B)
+cost of constraints: $   22.3M  (0.79% of ceiling)
 budget used    : $  9.378B of $9.378B
-loans funded   : 49,349
+loans funded   : 48,633
   partial      : 3
-avg PD funded  : 0.0247  (ceiling 0.030)
+avg PD funded  : 0.0249  (ceiling 0.030)
 ```
 
 ## Finding: the five constraints cost 0.78% of return
@@ -361,22 +358,22 @@ costs nothing. A nonzero value means it binds; the size is how hard.
 
 ```
 --- which constraints bind (nonzero shadow price = binding) ---
-  budget           shadow price +0.2830
-  state_CA         shadow price +0.0237
-  hr_floor         shadow price -0.0122
+  budget           shadow price +0.2826
+  state_CA         shadow price +0.0240
+  hr_floor         shadow price -0.0119
 
   binding: 3 of 59 constraints
 
 --- portfolio satisfies every constraint ---
   budget    : $9.378B <= $9.378B   ok
-  avg PD    : 0.0247 <= 0.030          ok
+  avg PD    : 0.0249 <= 0.030          ok
   max state : CA at 8.00% <= 8%   ok
-  first-time: 21.14% >= 20%       ok
+  first-time: 21.75% >= 20%       ok
   homeready : 5.05% >= 5.05%     ok
-  hfa       : 4.52% >= 2.56%     ok
+  hfa       : 4.56% >= 2.56%     ok
 
 --- portfolio is clean ---
-  loans funded : 49,349
+  loans funded : 48,633
   partial      : 3
 ```
 
@@ -399,15 +396,16 @@ costs nothing. A nonzero value means it binds; the size is how hard.
 So the $21.9M cost comes almost entirely from two dials: the California cap and
 the HomeReady floor. The other three constraints are currently dead weight.
 
-## The four portfolios: one function, four calls
+## The six portfolios: one function, six calls
 
 **What:** a single function that builds a portfolio from a score column and a
-method. Called four times for the 2x2: {naive score, model PD} x {greedy, LP}.
+method. Called six times for the 3x2: {naive score, model PD} x {risk-sort,
+greedy-return, LP}.
 
-**Why one function:** four copy-pasted blocks would drift, and a bug fixed in one
-would linger in the others. One function guarantees the four are built the exact
-same way, so any difference in results comes from the score and method, not from
-code differences.
+**Why one function:** six copy-pasted blocks would drift, and a bug fixed in one
+would linger in the others. One function guarantees they are all built the same
+way, so any difference in results comes from the score and method, not from code
+differences.
 
 **Option A, confirmed.** The score is treated as the PD everywhere it appears. For
 the naive runs, the objective's expected return and the PD ceiling both use the
@@ -415,35 +413,48 @@ naive score, not CatBoost. This asks a clean question: holding the method fixed,
 what does a better score buy? And holding the score fixed, what does optimization
 buy?
 
-**Greedy vs LP inside the function:**
-- Greedy: sort by return per dollar, fill until budget is spent. No other
-  constraints. This is what a naive lender actually does.
+**The three rules:**
+- Risk-sort: fund the safest loans first until the budget is spent. Ignores
+  return entirely. The timid lender.
+- Greedy-return: sort by return per dollar, fill until broke. Ignores risk and
+  every limit we set. The aggressive lender.
 - LP: the full solver with all five constraints.
 
-Both use the same objective, built from whichever score is passed in.
+All three use the same objective, built from whichever score is passed in.
 
 ```
-score     rule             funded   obj (scored)     obj (TRUE)   avg PD
-FICO×LTV  risk-sort        43,386 $      2.358B $      2.351B   0.0088
-FICO×LTV  greedy-return    45,047 $      2.834B $      2.748B   0.0431
-FICO×LTV  LP               48,985 $      2.813B $      2.727B   0.0437
-CatBoost  risk-sort        43,892 $      2.312B $      2.312B   0.0033
-CatBoost  greedy-return    45,429 $      2.820B $      2.820B   0.0249
-CatBoost  LP               49,349 $      2.798B $      2.798B   0.0247
+score     rule             funded     funded $   obj scored     obj TRUE   optimism   avg PD
+FICO×LTV  risk-sort        43,386 $   9,377.9M $   2,278.6M $   2,271.4M $     7.1M   0.0088
+FICO×LTV  greedy-return    44,516 $   9,378.0M $   2,832.3M $   2,745.7M $    86.6M   0.0431
+FICO×LTV  LP               48,342 $   9,378.2M $   2,810.5M $   2,724.4M $    86.1M   0.0442
+CatBoost  risk-sort        43,892 $   9,378.1M $   2,199.1M $   2,199.1M $     0.0M   0.0033
+CatBoost  greedy-return    44,832 $   9,377.7M $   2,817.8M $   2,817.8M $     0.0M   0.0250
+CatBoost  LP               48,633 $   9,378.2M $   2,795.6M $   2,795.6M $     0.0M   0.0249
+
+CatBoost minus FICO×LTV, same rule (true objective):
+  risk-sort      $    -72.3M
+  greedy-return  $    +72.1M
+  LP             $    +71.3M
+
+LP minus greedy-return, same score (true objective):
+  FICO×LTV       $    -21.3M
+  CatBoost       $    -22.2M
 ```
 
 ## Finding: six portfolios (2x3 ablation)
 
 Ranked by real return (using the true default rates, the honest measure):
 
-| Score | Rule | real return | avg default risk |
-|---|---|---|---|
-| CatBoost | greedy-return | $2.820B | 2.49% |
-| FICO×LTV | greedy-return | $2.748B | 4.31% |
-| CatBoost | LP | $2.798B | 2.47% |
-| FICO×LTV | LP | $2.727B | 4.37% |
-| FICO×LTV | risk-sort | $2.351B | 0.88% |
-| CatBoost | risk-sort | $2.312B | 0.33% |
+| Score | Rule | real return | avg default risk | loans funded |
+|---|---|---|---|---|
+| CatBoost | greedy-return | $2,817.8M | 2.50% | 44,832 |
+| CatBoost | LP | $2,795.6M | 2.49% | 48,633 |
+| FICO×LTV | greedy-return | $2,745.7M | 4.31% | 44,516 |
+| FICO×LTV | LP | $2,724.4M | 4.42% | 48,342 |
+| FICO×LTV | risk-sort | $2,271.4M | 0.88% | 43,386 |
+| CatBoost | risk-sort | $2,199.1M | 0.33% | 43,892 |
+
+All six spend the same $9.378B, within one fractional loan.
 
 **Three rules, three kinds of lender:**
 - greedy-return chases the most money and ignores risk and every limit we set. The
@@ -454,16 +465,23 @@ Ranked by real return (using the true default rates, the honest measure):
   across states and to fund the affordable-housing loans.
 
 **A better score helps two rules and hurts one.**
-- greedy-return: CatBoost earns $72M more than the bucket score.
-- LP: CatBoost earns $71M more.
-- risk-sort: CatBoost earns $39M *less*. When the only goal is playing it safe, the
-  more precise score just finds even safer, even lower-earning loans (0.33% vs
+- greedy-return: CatBoost earns $72.1M more than the bucket score.
+- LP: CatBoost earns $71.3M more.
+- risk-sort: CatBoost earns $72.3M *less*. When the only goal is playing it safe,
+  the more precise score just finds even safer, even lower-earning loans (0.33% vs
   0.88% default risk). A good score only helps if the rule actually uses it to
   chase return.
 
-**The LP costs only $22M against greedy-return** ($2.798B vs $2.820B). In return it
-gets a portfolio spread across more states and carrying the affordable-housing
-loans.
+**The LP costs $22.2M against greedy-return** ($2,795.6M vs $2,817.8M), and $21.3M
+on the naive score. In return it gets a portfolio spread across more states and
+carrying the affordable-housing loans. It funds 3,801 more loans to do it, which
+means it is buying smaller ones to clear the floors.
+
+**The naive score does not know what it is worth.** Its portfolios expect $86.6M
+(greedy-return) and $86.1M (LP) more than they actually earn. The CatBoost
+portfolios show zero gap, since there the score is the truth. The exception is
+naive risk-sort, off by only $7.1M: the bucket score's errors live in the risky
+end of the book, and risk-sort never goes there.
 
 **The catch:** these are expected returns on paper, so greedy-return looks best. But
 it has no safety net: no spread across states, no floors. Whether its extra $22M

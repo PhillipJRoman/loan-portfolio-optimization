@@ -13,55 +13,55 @@
       "score": "FICO\u00d7LTV",
       "rule": "risk-sort",
       "column": "x__FICOxLTV__risk-sort",
-      "real_return": 2271410625.2230964,
+      "real_return": 2272985181.850813,
       "funded_upb": 9377874000.0,
       "n_funded": 43386,
-      "avg_default_risk": 0.008820993829451854
+      "avg_default_risk": 0.008529948048107933
     },
     {
       "score": "FICO\u00d7LTV",
       "rule": "greedy-return",
       "column": "x__FICOxLTV__greedy-return",
-      "real_return": 2745717837.654332,
+      "real_return": 2760521805.616022,
       "funded_upb": 9378006000.0,
       "n_funded": 44516,
-      "avg_default_risk": 0.04306293625436158
+      "avg_default_risk": 0.0405477468720768
     },
     {
       "score": "FICO\u00d7LTV",
       "rule": "LP",
       "column": "x__FICOxLTV__LP",
-      "real_return": 2724369020.522738,
+      "real_return": 2739091171.4591494,
       "funded_upb": 9378234900.0,
       "n_funded": 48342,
-      "avg_default_risk": 0.04424276359459359
+      "avg_default_risk": 0.04174162328495885
     },
     {
       "score": "CatBoost",
       "rule": "risk-sort",
       "column": "x__CatBoost__risk-sort",
-      "real_return": 2199123914.046779,
-      "funded_upb": 9378122000.0,
-      "n_funded": 43892,
-      "avg_default_risk": 0.003336114317959389
+      "real_return": 2214431774.4632854,
+      "funded_upb": 9378027000.0,
+      "n_funded": 43245,
+      "avg_default_risk": 0.003318215287647576
     },
     {
       "score": "CatBoost",
       "rule": "greedy-return",
       "column": "x__CatBoost__greedy-return",
-      "real_return": 2817777262.336197,
-      "funded_upb": 9377710000.0,
-      "n_funded": 44832,
-      "avg_default_risk": 0.024978370049667048
+      "real_return": 2827567691.5519753,
+      "funded_upb": 9378142000.0,
+      "n_funded": 44869,
+      "avg_default_risk": 0.024297086056845534
     },
     {
       "score": "CatBoost",
       "rule": "LP",
       "column": "x__CatBoost__LP",
-      "real_return": 2795619977.610749,
+      "real_return": 2804639924.0246716,
       "funded_upb": 9378234900.0,
-      "n_funded": 48633,
-      "avg_default_risk": 0.02488134946169104
+      "n_funded": 48732,
+      "avg_default_risk": 0.0243714753359912
     }
   ]
 }

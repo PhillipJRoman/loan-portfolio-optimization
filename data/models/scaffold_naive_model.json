@@ -24,84 +24,12 @@
   "built_on": "train split only",
   "buckets": [
     {
-      "credit_grade": "Unknown",
-      "ltv_bin": "OLTV 60-70",
-      "n": 110,
-      "bucket_rate": 0.02727272727272727,
-      "grade_rate": 0.029504741833508957,
-      "score_naive": 0.029504741833508957,
-      "fellback": true
-    },
-    {
-      "credit_grade": "Exceptional",
-      "ltv_bin": "OLTV >95",
-      "n": 4015,
-      "bucket_rate": 0.0273972602739726,
-      "grade_rate": 0.008857243034765488,
-      "score_naive": 0.0273972602739726,
-      "fellback": false
-    },
-    {
-      "credit_grade": "Fair/Poor",
-      "ltv_bin": "OLTV 90-95",
-      "n": 9857,
-      "bucket_rate": 0.1591762199452166,
-      "grade_rate": 0.10252396567680899,
-      "score_naive": 0.1591762199452166,
-      "fellback": false
-    },
-    {
-      "credit_grade": "Fair/Poor",
-      "ltv_bin": "OLTV 80-90",
-      "n": 7712,
-      "bucket_rate": 0.12072095435684647,
-      "grade_rate": 0.10252396567680899,
-      "score_naive": 0.12072095435684647,
-      "fellback": false
-    },
-    {
       "credit_grade": "Exceptional",
       "ltv_bin": "OLTV 90-95",
       "n": 15456,
       "bucket_rate": 0.01384575569358178,
       "grade_rate": 0.008857243034765488,
       "score_naive": 0.01384575569358178,
-      "fellback": false
-    },
-    {
-      "credit_grade": "Exceptional",
-      "ltv_bin": "OLTV 70-80",
-      "n": 71352,
-      "bucket_rate": 0.008717344993833389,
-      "grade_rate": 0.008857243034765488,
-      "score_naive": 0.008717344993833389,
-      "fellback": false
-    },
-    {
-      "credit_grade": "Unknown",
-      "ltv_bin": "OLTV <=60",
-      "n": 140,
-      "bucket_rate": 0.0,
-      "grade_rate": 0.029504741833508957,
-      "score_naive": 0.029504741833508957,
-      "fellback": true
-    },
-    {
-      "credit_grade": "Good",
-      "ltv_bin": "OLTV 90-95",
-      "n": 57533,
-      "bucket_rate": 0.07444423200597917,
-      "grade_rate": 0.05288442237953137,
-      "score_naive": 0.07444423200597917,
-      "fellback": false
-    },
-    {
-      "credit_grade": "Fair/Poor",
-      "ltv_bin": "OLTV <=60",
-      "n": 17927,
-      "bucket_rate": 0.0716238076644168,
-      "grade_rate": 0.10252396567680899,
-      "score_naive": 0.0716238076644168,
       "fellback": false
     },
     {
@@ -114,12 +42,12 @@
       "fellback": false
     },
     {
-      "credit_grade": "Good",
-      "ltv_bin": "OLTV >95",
-      "n": 28006,
-      "bucket_rate": 0.0825180318503178,
-      "grade_rate": 0.05288442237953137,
-      "score_naive": 0.0825180318503178,
+      "credit_grade": "Very Good",
+      "ltv_bin": "OLTV 80-90",
+      "n": 70147,
+      "bucket_rate": 0.021312386844768844,
+      "grade_rate": 0.019664800231695374,
+      "score_naive": 0.021312386844768844,
       "fellback": false
     },
     {
@@ -132,66 +60,21 @@
       "fellback": false
     },
     {
-      "credit_grade": "Good",
-      "ltv_bin": "OLTV 80-90",
-      "n": 44435,
-      "bucket_rate": 0.053561381793631145,
-      "grade_rate": 0.05288442237953137,
-      "score_naive": 0.053561381793631145,
-      "fellback": false
-    },
-    {
-      "credit_grade": "Unknown",
-      "ltv_bin": "OLTV >95",
-      "n": 32,
-      "bucket_rate": 0.0625,
-      "grade_rate": 0.029504741833508957,
-      "score_naive": 0.029504741833508957,
-      "fellback": true
-    },
-    {
       "credit_grade": "Exceptional",
-      "ltv_bin": "OLTV 60-70",
-      "n": 23362,
-      "bucket_rate": 0.008560910880917729,
+      "ltv_bin": "OLTV 80-90",
+      "n": 17486,
+      "bucket_rate": 0.010808646917534028,
       "grade_rate": 0.008857243034765488,
-      "score_naive": 0.008560910880917729,
-      "fellback": false
-    },
-    {
-      "credit_grade": "Very Good",
-      "ltv_bin": "OLTV <=60",
-      "n": 106192,
-      "bucket_rate": 0.012580985384963085,
-      "grade_rate": 0.019664800231695374,
-      "score_naive": 0.012580985384963085,
+      "score_naive": 0.010808646917534028,
       "fellback": false
     },
     {
       "credit_grade": "Good",
-      "ltv_bin": "OLTV 60-70",
-      "n": 46126,
-      "bucket_rate": 0.04533235051814595,
+      "ltv_bin": "OLTV 90-95",
+      "n": 57533,
+      "bucket_rate": 0.07444423200597917,
       "grade_rate": 0.05288442237953137,
-      "score_naive": 0.04533235051814595,
-      "fellback": false
-    },
-    {
-      "credit_grade": "Very Good",
-      "ltv_bin": "OLTV 80-90",
-      "n": 70147,
-      "bucket_rate": 0.021312386844768844,
-      "grade_rate": 0.019664800231695374,
-      "score_naive": 0.021312386844768844,
-      "fellback": false
-    },
-    {
-      "credit_grade": "Very Good",
-      "ltv_bin": "OLTV 70-80",
-      "n": 226266,
-      "bucket_rate": 0.01808932848947699,
-      "grade_rate": 0.019664800231695374,
-      "score_naive": 0.01808932848947699,
+      "score_naive": 0.07444423200597917,
       "fellback": false
     },
     {
@@ -204,21 +87,12 @@
       "fellback": false
     },
     {
-      "credit_grade": "Unknown",
-      "ltv_bin": "OLTV 90-95",
-      "n": 110,
-      "bucket_rate": 0.045454545454545456,
-      "grade_rate": 0.029504741833508957,
-      "score_naive": 0.029504741833508957,
-      "fellback": true
-    },
-    {
-      "credit_grade": "Good",
-      "ltv_bin": "OLTV 70-80",
-      "n": 140786,
-      "bucket_rate": 0.04793800519938062,
-      "grade_rate": 0.05288442237953137,
-      "score_naive": 0.04793800519938062,
+      "credit_grade": "Fair/Poor",
+      "ltv_bin": "OLTV <=60",
+      "n": 17927,
+      "bucket_rate": 0.0716238076644168,
+      "grade_rate": 0.10252396567680899,
+      "score_naive": 0.0716238076644168,
       "fellback": false
     },
     {
@@ -231,6 +105,42 @@
       "fellback": false
     },
     {
+      "credit_grade": "Good",
+      "ltv_bin": "OLTV 70-80",
+      "n": 140786,
+      "bucket_rate": 0.04793800519938062,
+      "grade_rate": 0.05288442237953137,
+      "score_naive": 0.04793800519938062,
+      "fellback": false
+    },
+    {
+      "credit_grade": "Good",
+      "ltv_bin": "OLTV 80-90",
+      "n": 44435,
+      "bucket_rate": 0.053561381793631145,
+      "grade_rate": 0.05288442237953137,
+      "score_naive": 0.053561381793631145,
+      "fellback": false
+    },
+    {
+      "credit_grade": "Very Good",
+      "ltv_bin": "OLTV 70-80",
+      "n": 226266,
+      "bucket_rate": 0.01808932848947699,
+      "grade_rate": 0.019664800231695374,
+      "score_naive": 0.01808932848947699,
+      "fellback": false
+    },
+    {
+      "credit_grade": "Exceptional",
+      "ltv_bin": "OLTV 60-70",
+      "n": 23362,
+      "bucket_rate": 0.008560910880917729,
+      "grade_rate": 0.008857243034765488,
+      "score_naive": 0.008560910880917729,
+      "fellback": false
+    },
+    {
       "credit_grade": "Very Good",
       "ltv_bin": "OLTV 90-95",
       "n": 80231,
@@ -240,21 +150,12 @@
       "fellback": false
     },
     {
-      "credit_grade": "Fair/Poor",
-      "ltv_bin": "OLTV >95",
-      "n": 4074,
-      "bucket_rate": 0.15414825724104075,
-      "grade_rate": 0.10252396567680899,
-      "score_naive": 0.15414825724104075,
-      "fellback": false
-    },
-    {
-      "credit_grade": "Exceptional",
+      "credit_grade": "Very Good",
       "ltv_bin": "OLTV <=60",
-      "n": 53714,
-      "bucket_rate": 0.0057154559332762405,
-      "grade_rate": 0.008857243034765488,
-      "score_naive": 0.0057154559332762405,
+      "n": 106192,
+      "bucket_rate": 0.012580985384963085,
+      "grade_rate": 0.019664800231695374,
+      "score_naive": 0.012580985384963085,
       "fellback": false
     },
     {
@@ -262,6 +163,24 @@
       "ltv_bin": "OLTV 70-80",
       "n": 430,
       "bucket_rate": 0.020930232558139535,
+      "grade_rate": 0.029504741833508957,
+      "score_naive": 0.029504741833508957,
+      "fellback": true
+    },
+    {
+      "credit_grade": "Unknown",
+      "ltv_bin": "OLTV 60-70",
+      "n": 110,
+      "bucket_rate": 0.02727272727272727,
+      "grade_rate": 0.029504741833508957,
+      "score_naive": 0.029504741833508957,
+      "fellback": true
+    },
+    {
+      "credit_grade": "Unknown",
+      "ltv_bin": "OLTV >95",
+      "n": 32,
+      "bucket_rate": 0.0625,
       "grade_rate": 0.029504741833508957,
       "score_naive": 0.029504741833508957,
       "fellback": true
@@ -276,12 +195,57 @@
       "fellback": true
     },
     {
+      "credit_grade": "Fair/Poor",
+      "ltv_bin": "OLTV 90-95",
+      "n": 9857,
+      "bucket_rate": 0.1591762199452166,
+      "grade_rate": 0.10252396567680899,
+      "score_naive": 0.1591762199452166,
+      "fellback": false
+    },
+    {
+      "credit_grade": "Good",
+      "ltv_bin": "OLTV 60-70",
+      "n": 46126,
+      "bucket_rate": 0.04533235051814595,
+      "grade_rate": 0.05288442237953137,
+      "score_naive": 0.04533235051814595,
+      "fellback": false
+    },
+    {
+      "credit_grade": "Unknown",
+      "ltv_bin": "OLTV <=60",
+      "n": 140,
+      "bucket_rate": 0.0,
+      "grade_rate": 0.029504741833508957,
+      "score_naive": 0.029504741833508957,
+      "fellback": true
+    },
+    {
+      "credit_grade": "Fair/Poor",
+      "ltv_bin": "OLTV >95",
+      "n": 4074,
+      "bucket_rate": 0.15414825724104075,
+      "grade_rate": 0.10252396567680899,
+      "score_naive": 0.15414825724104075,
+      "fellback": false
+    },
+    {
       "credit_grade": "Exceptional",
-      "ltv_bin": "OLTV 80-90",
-      "n": 17486,
-      "bucket_rate": 0.010808646917534028,
+      "ltv_bin": "OLTV 70-80",
+      "n": 71352,
+      "bucket_rate": 0.008717344993833389,
       "grade_rate": 0.008857243034765488,
-      "score_naive": 0.010808646917534028,
+      "score_naive": 0.008717344993833389,
+      "fellback": false
+    },
+    {
+      "credit_grade": "Exceptional",
+      "ltv_bin": "OLTV >95",
+      "n": 4015,
+      "bucket_rate": 0.0273972602739726,
+      "grade_rate": 0.008857243034765488,
+      "score_naive": 0.0273972602739726,
       "fellback": false
     },
     {
@@ -291,6 +255,42 @@
       "bucket_rate": 0.03818607982290514,
       "grade_rate": 0.019664800231695374,
       "score_naive": 0.03818607982290514,
+      "fellback": false
+    },
+    {
+      "credit_grade": "Good",
+      "ltv_bin": "OLTV >95",
+      "n": 28006,
+      "bucket_rate": 0.0825180318503178,
+      "grade_rate": 0.05288442237953137,
+      "score_naive": 0.0825180318503178,
+      "fellback": false
+    },
+    {
+      "credit_grade": "Unknown",
+      "ltv_bin": "OLTV 90-95",
+      "n": 110,
+      "bucket_rate": 0.045454545454545456,
+      "grade_rate": 0.029504741833508957,
+      "score_naive": 0.029504741833508957,
+      "fellback": true
+    },
+    {
+      "credit_grade": "Fair/Poor",
+      "ltv_bin": "OLTV 80-90",
+      "n": 7712,
+      "bucket_rate": 0.12072095435684647,
+      "grade_rate": 0.10252396567680899,
+      "score_naive": 0.12072095435684647,
+      "fellback": false
+    },
+    {
+      "credit_grade": "Exceptional",
+      "ltv_bin": "OLTV <=60",
+      "n": 53714,
+      "bucket_rate": 0.0057154559332762405,
+      "grade_rate": 0.008857243034765488,
+      "score_naive": 0.0057154559332762405,
       "fellback": false
     }
   ]

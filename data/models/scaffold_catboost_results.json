@@ -1,94 +1,94 @@
 {
   "model": "catboost",
   "selected": true,
-  "saved_at": "2026-08-03T22:27:01.025465+00:00",
-  "auc_train": 0.7814136218499095,
-  "auc_test": 0.7749667843671347,
-  "auc_gap": 0.006446837482774748,
-  "brier_test": 0.031480182851566486,
-  "ece_test": 0.0008600005854715226,
+  "saved_at": "2026-08-04T13:06:10.314941+00:00",
+  "auc_train": 0.7787902920737666,
+  "auc_test": 0.7729982874762333,
+  "auc_gap": 0.005792004597533262,
+  "brier_test": 0.031517065226601144,
+  "ece_test": 0.0006100018052038643,
   "ece_noise_floor": 0.0006,
-  "mean_pred": 0.03392189881276828,
+  "mean_pred": 0.03402408599826945,
   "actual_rate": 0.03410859520986715,
   "calibration_bins": [
     {
       "bin": 0,
       "n": 40993,
-      "pred": 0.0031,
-      "obs": 0.0024,
-      "gap": -0.0008,
-      "ratio": 0.75
+      "pred": 0.0032,
+      "obs": 0.0027,
+      "gap": -0.0005,
+      "ratio": 0.85
     },
     {
       "bin": 1,
       "n": 40992,
-      "pred": 0.0061,
-      "obs": 0.0055,
-      "gap": -0.0006,
-      "ratio": 0.9
+      "pred": 0.0062,
+      "obs": 0.0054,
+      "gap": -0.0008,
+      "ratio": 0.87
     },
     {
       "bin": 2,
       "n": 40993,
-      "pred": 0.0093,
-      "obs": 0.0096,
-      "gap": 0.0003,
-      "ratio": 1.03
+      "pred": 0.0094,
+      "obs": 0.0098,
+      "gap": 0.0004,
+      "ratio": 1.04
     },
     {
       "bin": 3,
       "n": 40992,
-      "pred": 0.0131,
-      "obs": 0.0124,
-      "gap": -0.0007,
-      "ratio": 0.95
+      "pred": 0.0132,
+      "obs": 0.0127,
+      "gap": -0.0005,
+      "ratio": 0.96
     },
     {
       "bin": 4,
       "n": 40993,
-      "pred": 0.0179,
-      "obs": 0.0175,
-      "gap": -0.0004,
+      "pred": 0.018,
+      "obs": 0.0177,
+      "gap": -0.0003,
       "ratio": 0.98
     },
     {
       "bin": 5,
       "n": 40993,
-      "pred": 0.0242,
-      "obs": 0.0243,
-      "gap": 0.0001,
-      "ratio": 1.01
+      "pred": 0.0243,
+      "obs": 0.0239,
+      "gap": -0.0004,
+      "ratio": 0.98
     },
     {
       "bin": 6,
       "n": 40992,
-      "pred": 0.0327,
-      "obs": 0.0317,
-      "gap": -0.0009,
-      "ratio": 0.97
+      "pred": 0.0329,
+      "obs": 0.0328,
+      "gap": -0.0001,
+      "ratio": 1.0
     },
     {
       "bin": 7,
       "n": 40992,
-      "pred": 0.0449,
-      "obs": 0.0458,
-      "gap": 0.0009,
-      "ratio": 1.02
+      "pred": 0.0454,
+      "obs": 0.0457,
+      "gap": 0.0003,
+      "ratio": 1.01
     },
     {
       "bin": 8,
       "n": 40993,
-      "pred": 0.0651,
-      "obs": 0.0677,
-      "gap": 0.0026,
-      "ratio": 1.04
+      "pred": 0.0656,
+      "obs": 0.0668,
+      "gap": 0.0012,
+      "ratio": 1.02
     },
     {
       "bin": 9,
       "n": 40993,
-      "pred": 0.1228,
-      "obs": 0.1241,
-      "gap": 0.0012,
+      "pred": 0.1219,
+      "obs": 0.1235,
+      "gap": 0.0016,
       "ratio": 1.01
     }
   ],
@@ -102,14 +102,12 @@
       "CSCORE_B",
       "CSCORE_C",
       "OLTV",
-      "OCLTV",
+      "second_lien",
       "DTI",
-      "ORIG_RATE",
       "ORIG_UPB",
       "ORIG_TERM",
       "NUM_BO",
-      "NO_UNITS",
-      "MI_PCT"
+      "NO_UNITS"
     ],
     "flags": [
       "is_first_time",
@@ -120,7 +118,6 @@
     ],
     "categorical": [
       "CHANNEL",
-      "SELLER",
       "PURPOSE",
       "PROP",
       "OCC_STAT",
@@ -134,21 +131,18 @@
       "CSCORE_B",
       "CSCORE_C",
       "OLTV",
-      "OCLTV",
+      "second_lien",
       "DTI",
-      "ORIG_RATE",
       "ORIG_UPB",
       "ORIG_TERM",
       "NUM_BO",
       "NO_UNITS",
-      "MI_PCT",
       "is_first_time",
       "is_homeready",
       "is_hfa",
       "has_coborrower",
       "fico_missing",
       "CHANNEL",
-      "SELLER",
       "PURPOSE",
       "PROP",
       "OCC_STAT",

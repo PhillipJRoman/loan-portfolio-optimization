@@ -1,5 +1,36 @@
 # scaffold_sim
 
+# Simulation Scaffolding: Do the Constraints Buy Anything?
+
+Stage 4, the final one. The LP produced six portfolios and told us what each
+should earn on average. This notebook asks a different question: what happens in a
+bad year?
+
+**Why average return is not enough.** The LP's constraints cost about $23M in
+expected return. That is the price. The whole argument for paying it is that a
+portfolio spread across states and loan types holds up better when things go
+wrong. Expected return cannot show that, because it only describes a typical year.
+We need to simulate the bad ones.
+
+**How the bad years get made.** Each simulated year draws one shared economic
+shock plus a private shock for every loan. When the shared shock is bad, defaults
+pile up across the whole book at once. That clustering is the thing that separates
+a diversified portfolio from a concentrated one, and it is exactly what a
+loan-by-loan coin flip cannot produce.
+
+**What gets built**
+
+- **Part 1:** each loan defaults on its own, no shared shock. A wiring check, and
+  a demonstration of why independence is useless here.
+- **Part 2:** the shared-shock model, tested on synthetic loans before we trust it.
+- **Part 3:** all six portfolios through 10,000 simulated years.
+- **Part 4:** a sensitivity grid, varying how tightly defaults cluster and how much
+  a default costs.
+
+**What we measure**
+
+Average return, year-to-year swing, the
+
 ## Stage 4, piece 1: independent-draw simulation
 
 **What this does:** for each of the six portfolios, we roll the dice 10,000 times.
@@ -27,12 +58,12 @@ of its interest and 40% of its loss.
 
 ```
 score     rule             avg %   spread  bad yr %
-FICOxLTV  risk-sort       25.30   0.016    25.27
-FICOxLTV  greedy-return   30.72   0.035    30.66
-FICOxLTV  LP              30.51   0.033    30.45
-CatBoost  risk-sort       24.73   0.009    24.72
-CatBoost  greedy-return   30.89   0.025    30.85
-CatBoost  LP              30.64   0.023    30.61
+FICOxLTV  risk-sort       24.46   0.016    24.43
+FICOxLTV  greedy-return   30.77   0.034    30.71
+FICOxLTV  LP              30.57   0.033    30.51
+CatBoost  risk-sort       23.69   0.010    23.68
+CatBoost  greedy-return   30.94   0.025    30.90
+CatBoost  LP              30.70   0.023    30.66
 ```
 
 ## Finding: independent draws are unrealistically calm
@@ -41,12 +72,12 @@ Baseline simulation, 10,000 years, each loan defaulting on its own.
 
 | Score | Rule | avg % | spread | bad year % |
 |---|---|---|---|---|
-| CatBoost | greedy-return | 30.89 | 0.025 | 30.85 |
-| CatBoost | LP | 30.64 | 0.023 | 30.61 |
-| FICO×LTV | greedy-return | 30.72 | 0.035 | 30.66 |
-| FICO×LTV | LP | 30.51 | 0.033 | 30.45 |
-| FICO×LTV | risk-sort | 25.30 | 0.016 | 25.27 |
-| CatBoost | risk-sort | 24.73 | 0.009 | 24.72 |
+| CatBoost | greedy-return | 30.94 | 0.025 | 30.90 |
+| CatBoost | LP | 30.70 | 0.023 | 30.66 |
+| FICO×LTV | greedy-return | 30.77 | 0.034 | 30.71 |
+| FICO×LTV | LP | 30.57 | 0.033 | 30.51 |
+| FICO×LTV | risk-sort | 24.46 | 0.016 | 24.43 |
+| CatBoost | risk-sort | 23.69 | 0.010 | 23.68 |
 
 **The spread is nearly zero.** Every simulated year lands within a few hundredths
 of a percent of the average. The bad year sits right on top of the average
@@ -231,7 +262,7 @@ pull the average up. That is the real pattern in mortgage credit.
 ## Impact on the project
 
 - **Our constraints can finally be tested.** The state cap and equity floors cost
-  us $21.9M in expected return. Part 1 could not show whether that bought anything
+  us $23.0M in expected return. Part 1 could not show whether that bought anything,
   because no portfolio ever had a bad year. Now they can be judged on how they hold
   up when defaults pile up.
 
@@ -240,9 +271,10 @@ pull the average up. That is the real pattern in mortgage credit.
   ranking assumes the average year. With bad years in the model, the ranking may
   change.
 
-- **The two additonal metrics now have something to measure.** Worst-years average and
-  chance of a losing year were meaningless in part 1. They are the metrics that
-  test the central claim.
+- **The two additional metrics now have something to measure.** Worst-years average
+  and chance of a losing year were both meaningless in part 1, where no year was
+  bad enough to tell the portfolios apart. They are the metrics that actually test
+  the central claim.
 
 - **This is the setup for the real test.** The next run puts all six portfolios
   through these same bad years and shows which ones survive.
@@ -276,28 +308,28 @@ face the identical years within each chunk, so the comparison is fair.
 with a run label so later runs append to the same files.
 
 ```
-chunk  1/20  years     0-  500     0.8s
-  chunk  2/20  years   500- 1000     1.4s
-  chunk  3/20  years  1000- 1500     2.1s
-  chunk  4/20  years  1500- 2000     2.8s
-  chunk  5/20  years  2000- 2500     3.4s
-  chunk  6/20  years  2500- 3000     4.1s
-  chunk  7/20  years  3000- 3500     4.8s
-  chunk  8/20  years  3500- 4000     5.4s
-  chunk  9/20  years  4000- 4500     6.1s
-  chunk 10/20  years  4500- 5000     6.8s
-  chunk 11/20  years  5000- 5500     7.5s
-  chunk 12/20  years  5500- 6000     8.1s
-  chunk 13/20  years  6000- 6500     8.8s
-  chunk 14/20  years  6500- 7000     9.5s
-  chunk 15/20  years  7000- 7500    10.1s
-  chunk 16/20  years  7500- 8000    10.8s
-  chunk 17/20  years  8000- 8500    11.5s
-  chunk 18/20  years  8500- 9000    12.1s
-  chunk 19/20  years  9000- 9500    12.8s
-  chunk 20/20  years  9500-10000    13.5s
+chunk  1/20  years     0-  500     0.9s
+  chunk  2/20  years   500- 1000     1.6s
+  chunk  3/20  years  1000- 1500     2.2s
+  chunk  4/20  years  1500- 2000     2.9s
+  chunk  5/20  years  2000- 2500     3.6s
+  chunk  6/20  years  2500- 3000     4.3s
+  chunk  7/20  years  3000- 3500     5.0s
+  chunk  8/20  years  3500- 4000     5.7s
+  chunk  9/20  years  4000- 4500     6.4s
+  chunk 10/20  years  4500- 5000     7.1s
+  chunk 11/20  years  5000- 5500     7.8s
+  chunk 12/20  years  5500- 6000     8.5s
+  chunk 13/20  years  6000- 6500     9.1s
+  chunk 14/20  years  6500- 7000     9.9s
+  chunk 15/20  years  7000- 7500    10.5s
+  chunk 16/20  years  7500- 8000    11.2s
+  chunk 17/20  years  8000- 8500    11.9s
+  chunk 18/20  years  8500- 9000    12.6s
+  chunk 19/20  years  9000- 9500    13.3s
+  chunk 20/20  years  9500-10000    14.0s
 
-done in 13.5s
+done in 14.0s
 
 asset correlation 0.15   LGD 30%   10,000 simulated years
 All values are RETURN on dollars funded, except the last column.
@@ -305,12 +337,12 @@ All values are RETURN on dollars funded, except the last column.
 score     rule           avg return  std dev  bad-yr return  worst-yrs return  yrs w/ loss
                           (typical)    (pts)   (5th pctile)    (avg worst 5%) (% of years)
 --------------------------------------------------------------------------------------------
-FICOxLTV  risk-sort          25.30%    0.32         24.71%            24.27%        0.00%
-FICOxLTV  greedy-return      30.72%    1.04         28.67%            27.63%        0.00%
-FICOxLTV  LP                 30.51%    1.05         28.46%            27.40%        0.00%
-CatBoost  risk-sort          24.73%    0.15         24.47%            24.23%        0.00%
-CatBoost  greedy-return      30.89%    0.72         29.49%            28.66%        0.00%
-CatBoost  LP                 30.65%    0.71         29.26%            28.44%        0.00%
+FICOxLTV  risk-sort          24.46%    0.31         23.89%            23.46%        0.00%
+FICOxLTV  greedy-return      30.77%    1.00         28.82%            27.80%        0.00%
+FICOxLTV  LP                 30.57%    1.02         28.58%            27.54%        0.00%
+CatBoost  risk-sort          23.69%    0.15         23.43%            23.19%        0.00%
+CatBoost  greedy-return      30.95%    0.71         29.57%            28.77%        0.00%
+CatBoost  LP                 30.70%    0.70         29.33%            28.52%        0.00%
 
 saved sim_returns.parquet and sim_summary.json  (run: base_rho015_lgd30)
 ```
@@ -322,15 +354,16 @@ dollars funded, except the last column.
 
 | Score | Rule | avg return | std dev | bad-yr return | worst-yrs return | yrs w/ loss |
 |---|---|---|---|---|---|---|
-| CatBoost | greedy-return | 30.89% | 0.72 | 29.49% | 28.66% | 0.00% |
-| CatBoost | LP | 30.65% | 0.71 | 29.26% | 28.44% | 0.00% |
-| FICO×LTV | greedy-return | 30.72% | 1.04 | 28.67% | 27.63% | 0.00% |
-| FICO×LTV | LP | 30.51% | 1.05 | 28.46% | 27.40% | 0.00% |
-| FICO×LTV | risk-sort | 25.30% | 0.32 | 24.71% | 24.27% | 0.00% |
-| CatBoost | risk-sort | 24.73% | 0.15 | 24.47% | 24.23% | 0.00% |
+| CatBoost | greedy-return | 30.95% | 0.71 | 29.57% | 28.77% | 0.00% |
+| CatBoost | LP | 30.70% | 0.70 | 29.33% | 28.52% | 0.00% |
+| FICO×LTV | greedy-return | 30.77% | 1.00 | 28.82% | 27.80% | 0.00% |
+| FICO×LTV | LP | 30.57% | 1.02 | 28.58% | 27.54% | 0.00% |
+| FICO×LTV | risk-sort | 24.46% | 0.31 | 23.89% | 23.46% | 0.00% |
+| CatBoost | risk-sort | 23.69% | 0.15 | 23.43% | 23.19% | 0.00% |
 
-**The correlation took.** Year-to-year variation is now 0.15 to 1.05 points, up
-from 0.009 to 0.035 in part 1. Roughly 30x larger. Bad years are now accounted for in our simulation.
+**The correlation took.** Year-to-year variation is now 0.15 to 1.02 points, up
+from 0.010 to 0.034 in part 1. Roughly 30x larger. Bad years are now accounted for
+in our simulation.
 
 **But the ranking is identical to expected return.** CatBoost greedy-return still
 leads on every metric, including the two downside metrics. The LP still trails it
@@ -338,8 +371,8 @@ by about the same margin as on paper.
 
 **No portfolio ever loses money.** These loans earn about 26 cents of interest per
 dollar over 7 years, and a default costs 30 cents. A portfolio only goes negative
-if roughly 45% of the loans it holds defaults at one time. Even the worst simulated year does not come
-close, because all six portfolios hold low-risk loans.
+if roughly 45% of the loans it holds defaults at one time. Even the worst simulated
+year does not come close, because all six portfolios hold low-risk loans.
 
 **Why diversification is not paying off.** A single systematic factor hits every
 loan equally, no matter what state it is in. There is no state-level shock in the
@@ -348,7 +381,7 @@ The state cap costs return and buys no measurable downside protection here.
 
 ## Impact on the project
 
-- **The constraints cost $21.9M and, under these assumptions, buy nothing
+- **The constraints cost $23.0M and, under these assumptions, buy nothing
   measurable.** That is an honest result, not a failure. It says the protection
   they offer is invisible to a model with only one shared shock.
 
@@ -379,56 +412,56 @@ base case.
 (0.50 / 0.30)`.
 
 ```
-rho000_lgd30  done in 13.6s
-  rho000_lgd50  done in 13.6s
-  rho015_lgd30  done in 13.7s
-  rho015_lgd50  done in 13.7s
+rho000_lgd30  done in 13.9s
+  rho000_lgd50  done in 13.9s
+  rho015_lgd30  done in 13.9s
+  rho015_lgd50  done in 13.8s
   rho030_lgd30  done in 13.9s
   rho030_lgd50  done in 13.8s
 
-all 6 runs in 82.3s
+all 6 runs in 83.1s
 
 Return on dollars funded. All six portfolios, all six runs.
 
 asset correlation 0.00   LGD 30%
   score     rule               avg     std   bad-yr  worst-yrs  yrs w/ loss
   ----------------------------------------------------------------------
-  FICOxLTV  risk-sort       25.30%   0.02   25.27%     25.26%        0.00%
-  FICOxLTV  greedy-return   30.72%   0.03   30.66%     30.64%        0.00%
-  FICOxLTV  LP              30.51%   0.03   30.45%     30.44%        0.00%
-  CatBoost  risk-sort       24.73%   0.01   24.72%     24.71%        0.00%
-  CatBoost  greedy-return   30.89%   0.02   30.85%     30.83%        0.00%
-  CatBoost  LP              30.64%   0.02   30.60%     30.59%        0.00%
+  FICOxLTV  risk-sort       24.46%   0.02   24.43%     24.42%        0.00%
+  FICOxLTV  greedy-return   30.77%   0.03   30.71%     30.69%        0.00%
+  FICOxLTV  LP              30.57%   0.03   30.51%     30.50%        0.00%
+  CatBoost  risk-sort       23.69%   0.01   23.68%     23.67%        0.00%
+  CatBoost  greedy-return   30.94%   0.02   30.90%     30.89%        0.00%
+  CatBoost  LP              30.70%   0.02   30.66%     30.65%        0.00%
 
 asset correlation 0.00   LGD 50%
   score     rule               avg     std   bad-yr  worst-yrs  yrs w/ loss
   ----------------------------------------------------------------------
-  FICOxLTV  risk-sort       25.12%   0.03   25.08%     25.07%        0.00%
-  FICOxLTV  greedy-return   29.85%   0.06   29.76%     29.73%        0.00%
-  FICOxLTV  LP              29.64%   0.06   29.54%     29.52%        0.00%
-  CatBoost  risk-sort       24.67%   0.02   24.64%     24.63%        0.00%
-  CatBoost  greedy-return   30.39%   0.04   30.32%     30.30%        0.00%
-  CatBoost  LP              30.15%   0.04   30.08%     30.07%        0.00%
+  FICOxLTV  risk-sort       24.29%   0.03   24.24%     24.23%        0.00%
+  FICOxLTV  greedy-return   29.95%   0.06   29.86%     29.84%        0.00%
+  FICOxLTV  LP              29.73%   0.05   29.64%     29.62%        0.00%
+  CatBoost  risk-sort       23.63%   0.02   23.60%     23.59%        0.00%
+  CatBoost  greedy-return   30.46%   0.04   30.39%     30.37%        0.00%
+  CatBoost  LP              30.21%   0.04   30.15%     30.13%        0.00%
 
 asset correlation 0.15   LGD 30%
   score     rule               avg     std   bad-yr  worst-yrs  yrs w/ loss
   ----------------------------------------------------------------------
-  FICOxLTV  risk-sort       25.30%   0.32   24.71%     24.27%        0.00%
-  FICOxLTV  greedy-return   30.72%   1.04   28.67%     27.63%        0.00%
-  FICOxLTV  LP              30.51%   1.05   28.46%     27.40%        0.00%
-  CatBoost  risk-sort       24.73%   0.15   24.47%     24.23%        0.00%
-  CatBoost  greedy-return   30.89%   0.72   29.49%     28.66%        0.00%
-  CatBoost  LP              30.65%   0.71   29.26%     28.44%        0.00%
+  FICOxLTV  risk-sort       24.46%   0.31   23.89%     23.46%        0.00%
+  FICOxLTV  greedy-return   30.77%   1.00   28.82%     27.80%        0.00%
+  FICOxLTV  LP              30.57%   1.02   28.58%     27.54%        0.00%
+  CatBoost  risk-sort       23.69%   0.15   23.43%     23.19%        0.00%
+  CatBoost  greedy-return   30.95%   0.71   29.57%     28.77%        0.00%
+  CatBoost  LP              30.70%   0.70   29.33%     28.52%        0.00%
 
 asset correlation 0.15   LGD 50%
   score     rule               avg     std   bad-yr  worst-yrs  yrs w/ loss
   ----------------------------------------------------------------------
-  FICOxLTV  risk-sort       25.13%   0.53   24.14%     23.41%        0.00%
-  FICOxLTV  greedy-return   29.86%   1.74   26.45%     24.71%        0.00%
-  FICOxLTV  LP              29.64%   1.75   26.23%     24.46%        0.00%
-  CatBoost  risk-sort       24.67%   0.26   24.23%     23.83%        0.00%
-  CatBoost  greedy-return   30.39%   1.20   28.07%     26.68%        0.00%
-  CatBoost  LP              30.15%   1.19   27.84%     26.48%        0.00%
+  FICOxLTV  risk-sort       24.29%   0.52   23.34%     22.62%        0.00%
+  FICOxLTV  greedy-return   29.96%   1.66   26.71%     25.02%        0.00%
+  FICOxLTV  LP              29.74%   1.70   26.41%     24.69%        0.00%
+  CatBoost  risk-sort       23.63%   0.25   23.20%     22.80%        0.00%
+  CatBoost  greedy-return   30.46%   1.18   28.18%     26.83%        0.00%
+  CatBoost  LP              30.22%   1.17   27.93%     26.58%        0.00%
 
 asset correlation 0.30   LGD 30%
   score     rule               avg     std   bad-yr  worst-yrs  yrs w/ loss
@@ -443,31 +476,34 @@ Six runs: asset correlation 0.00 / 0.15 / 0.30 crossed with LGD 30% / 50%.
 All values are return on dollars funded.
 
 **The 0.00 correlation run reproduces part 1.** Standard deviations of 0.01 to
-0.03, matching part 1's 0.009 to 0.035. The code is correct.
+0.03, matching part 1's 0.010 to 0.034. The code is correct.
 
 **Both dials work, and they compound.** CatBoost LP standard deviation:
 
 | | LGD 30% | LGD 50% |
 |---|---|---|
 | correlation 0.00 | 0.02 | 0.04 |
-| correlation 0.15 | 0.71 | 1.19 |
-| correlation 0.30 | 1.13 | 1.89 |
+| correlation 0.15 | 0.70 | 1.17 |
+| correlation 0.30 | 1.12 | 1.87 |
 
 Correlation multiplies the year-to-year swing by about 50x. LGD adds roughly 65%
-on top of that. The harshest run is 95 times more volatile than the calmest.
+on top of that. The harshest run is 94 times more volatile than the calmest.
 
 **Greedy-return beats the LP in all six runs, on every metric.** The gap is
-steady: 0.21 to 0.25 points of average return, and a similar gap in bad years. The
+steady: 0.19 to 0.25 points of average return, and a similar gap in bad years. The
 constraints cost the same whether conditions are calm or harsh.
 
-**One portfolio lost money, once.** FICO×LTV LP at correlation 0.30 and LGD 50%
-returned below zero in 0.01% of years, or 1 year out of 10,000. It is the only
-nonzero cell in the grid, and notably it is a constrained portfolio, not greedy.
+**No portfolio ever loses money, in any run.** Even at correlation 0.30 with LGD
+50%, the worst cell in the grid is FICO×LTV LP at 21.28% in its worst years. These
+loans simply earn too much interest relative to their default risk for a losing
+year to be reachable under any setting we tested.
 
-**Risk-sort has by far the best downside.** In the harshest run, CatBoost
-risk-sort still returns 23.18% in its worst years with a standard deviation of
-0.47. CatBoost greedy-return drops to 24.02% with a standard deviation of 1.91.
-Risk-sort gives up about 6 points of average return to be four times steadier.
+**Risk-sort is the steadiest portfolio, but not the safest.** In the harshest run,
+CatBoost risk-sort has a standard deviation of 0.47 against greedy-return's 1.87,
+four times steadier. But its worst years land at 22.15% while greedy-return's land
+at 24.22%. Risk-sort gives up about 7 points of average return and still ends up
+worse off when things go badly. Steadiness and safety are not the same thing, and
+this is the clearest example of it in the grid.
 
 ## Impact on the project
 
@@ -475,9 +511,10 @@ Risk-sort gives up about 6 points of average return to be four times steadier.
   We tested this two ways and the answer did not move. That is an honest negative
   result, not a failed run.
 
-- **Simple risk-sorting does provide protection.** It is the steadiest portfolio in
-  every run, at a large cost in return. Under a much harsher stress it would win
-  outright.
+- **Neither does playing it safe.** Risk-sort is the steadiest portfolio in every
+  run, but its worst years are worse than greedy-return's in the harshest run. It
+  pays a large premium in return for stability and gets no protection where it
+  counts.
 
 - **The state cap cannot pay off in this model, structurally.** A single systematic
   factor hits every loan equally regardless of location. There is no geographic
@@ -504,3 +541,72 @@ shape: (6, 1)
 rows: 60,000   (expect 60,000)
 summary rows: 36   (expect 36)
 ```
+
+# Stage 4 Summary
+
+## What we set out to test
+
+The LP's constraints cost about $23M in expected return. The argument for paying
+that is protection: a portfolio spread across states and loan programs should hold
+up better in a bad year than one that just chases yield. Expected return cannot
+show that, so we simulated 10,000 years to find out.
+
+## What we found
+
+**The constraints buy no measurable protection.** Greedy-return beats the LP in all
+six sensitivity runs, on every metric including the downside ones. The gap stays
+between 0.19 and 0.25 points of return whether conditions are calm or harsh. We
+paid $23M and, under these assumptions, got nothing back.
+
+**Playing it safe does not work either.** Risk-sort is by far the steadiest
+portfolio, four times less volatile than greedy-return in the harshest run. But its
+worst years are still *worse* than greedy-return's, and it gives up 7 points of
+average return to get there. Steadiness is not the same thing as safety.
+
+**Nothing ever loses money.** Across all 36 portfolio-scenario combinations, not
+one produced a losing year. These loans earn roughly 26 cents of interest per
+dollar against a 30-cent loss on default, so a portfolio would need close to half
+its loans failing at once to go negative. Nothing we simulated came near that.
+
+**The better score does help.** CatBoost portfolios beat their FICO×LTV
+counterparts on both greedy-return and LP, in every run. That part of the project's
+claim holds.
+
+## Why the constraints could not have helped
+
+This is the important caveat, and it is structural rather than a failed test.
+
+Our model has one shared economic shock that hits every loan equally, regardless
+of where the house is. So there is no such thing as a bad year in California that
+is not also a bad year in Texas. Spreading across states protects against a risk
+the simulation does not contain.
+
+The state cap was never going to pay off here. That is a property of how we built
+the simulation, not evidence that geographic diversification is worthless in
+reality.
+
+## What this means for the project's claim
+
+The original claim was that calibrated probabilities plus constrained optimization
+beat a naive rule. The results split it in two:
+
+- **The probabilities part holds.** Better risk estimates produce better portfolios
+  under every rule that chases return.
+- **The constraints part does not, as tested.** They cost money and buy no
+  downside protection in this model.
+
+That is a more interesting result than a clean win, and it should be reported as
+one rather than smoothed over.
+
+## The open decision
+
+Two honest paths:
+
+1. **Add a regional shock** so geography has something to diversify against. This
+   would give the state cap a fair test. It is new scope.
+2. **Write it up as-is**, stating plainly that a single-factor model cannot value
+   geographic diversification, and that the constraints should be judged on policy
+   grounds rather than risk grounds.
+
+Either is defensible. What is not defensible is claiming the constraints paid off
+when this simulation says they did not.

@@ -1,5 +1,40 @@
 # scaffold_ml
 
+# ML Scaffolding: Default Probabilities
+
+Stage 2 of the pipeline. Predict how likely each loan is to default, so the
+optimizer has something to work with.
+
+**What matters here is not accuracy.** The LP does arithmetic on the probability
+itself: expected return is `(1 - PD) x interest - PD x loss`. A model that ranks
+loans perfectly but reports 5% when the truth is 3% would wreck that math. So the
+number has to be right, not just the ordering.
+
+**What gets built**
+
+- Four models on 23 features: logistic regression, XGBoost, LightGBM, CatBoost.
+- A calibration check on each, asking whether predicted risk matches what actually
+  happened.
+- An isotonic pass, tested and rejected.
+- A naive lookup scorer built from credit grade and equity, with no ML in it. This
+  is the baseline the whole project argues against.
+- `scaffold_pool.parquet`: the test-split loans with every score attached, which is
+  what the LP reads.
+
+**Scope**
+
+Untuned baselines. No hyperparameter search, no class weighting. This notebook
+exists to unblock the LP with honest probabilities; the tuned model comes later.
+
+**Splitting**
+
+Loans are assigned to train, calibrate, or test by hashing `LOAN_ID`, so the split
+is identical every run and across machines. 60/20/20.
+
+**Output**
+
+`scaffold_pool.parquet`, 409,926 loans by 16 columns.
+
 ```
 LOAN_ID                             String
 POOL_ID                             String
@@ -168,7 +203,10 @@ shape: (14, 2)
 │ DTI_min      ┆ 1.0      │
 │ CSCORE_C_min ┆ 620.0    │
 │ NUM_BO_min   ┆ 1.0      │
-│ …            ┆ …        │
+│ NO_UNITS_min ┆ 1.0      │
+│ MI_PCT_min   ┆ 6.0      │
+│ OLTV_max     ┆ 97.0     │
+│ OCLTV_max    ┆ 114.0    │
 │ DTI_max      ┆ 63.0     │
 │ CSCORE_C_max ┆ 839.0    │
 │ NUM_BO_max   ┆ 6.0      │
@@ -341,23 +379,26 @@ synthetic AUC vs real default_flag: 0.7178
 ```
 --- cardinality and nulls ---
 shape: (14, 3)
-┌─────────────────────────────────┬──────────┬───────┐
-│ column                          ┆ n_unique ┆ nulls │
-│ ---                             ┆ ---      ┆ ---   │
-│ str                             ┆ u32      ┆ u32   │
-╞═════════════════════════════════╪══════════╪═══════╡
-│ STATE                           ┆ 54       ┆ 0     │
-│ SELLER                          ┆ 38       ┆ 0     │
-│ PROP                            ┆ 5        ┆ 0     │
-│ PROPERTY_INSPECTION_WAIVER_IND… ┆ 4        ┆ 0     │
-│ CHANNEL                         ┆ 3        ┆ 0     │
-│ …                               ┆ …        ┆ …     │
-│ IO                              ┆ 2        ┆ 1     │
-│ HIGH_BALANCE_LOAN_INDICATOR     ┆ 2        ┆ 0     │
-│ RELOCATION_MORTGAGE_INDICATOR   ┆ 2        ┆ 0     │
-│ PRODUCT                         ┆ 1        ┆ 0     │
-│ PPMT_FLG                        ┆ 1        ┆ 0     │
-└─────────────────────────────────┴──────────┴───────┘
+┌──────────────────────────────────────┬──────────┬─────────┐
+│ column                               ┆ n_unique ┆ nulls   │
+│ ---                                  ┆ ---      ┆ ---     │
+│ str                                  ┆ u32      ┆ u32     │
+╞══════════════════════════════════════╪══════════╪═════════╡
+│ STATE                                ┆ 54       ┆ 0       │
+│ SELLER                               ┆ 38       ┆ 0       │
+│ PROP                                 ┆ 5        ┆ 0       │
+│ PROPERTY_INSPECTION_WAIVER_INDICATOR ┆ 4        ┆ 0       │
+│ CHANNEL                              ┆ 3        ┆ 0       │
+│ PURPOSE                              ┆ 3        ┆ 0       │
+│ OCC_STAT                             ┆ 3        ┆ 0       │
+│ MI_TYPE                              ┆ 3        ┆ 1432111 │
+│ FIRST_FLAG                           ┆ 2        ┆ 0       │
+│ IO                                   ┆ 2        ┆ 1       │
+│ HIGH_BALANCE_LOAN_INDICATOR          ┆ 2        ┆ 0       │
+│ RELOCATION_MORTGAGE_INDICATOR        ┆ 2        ┆ 0       │
+│ PRODUCT                              ┆ 1        ┆ 0       │
+│ PPMT_FLG                             ┆ 1        ┆ 0       │
+└──────────────────────────────────────┴──────────┴─────────┘
 
 --- value counts for low-cardinality columns ---
 
@@ -448,24 +489,7 @@ PPMT_FLG  (k=1)
 shape: (1, 2)
 ┌──────────┬─────────┐
 │ PPMT_FLG ┆ count   │
-│ ---      ┆ ---     │
-│ str      ┆ u32     │
-╞══════════╪═════════╡
-│ N        ┆ 2046851 │
-└──────────┴─────────┘
-
-IO  (k=2)
-shape: (2, 2)
-┌──────┬─────────┐
-│ IO   ┆ count   │
-│ ---  ┆ ---     │
-│ str  ┆ u32     │
-╞══════╪═════════╡
-│ N    ┆ 2046850 │
-│ null ┆ 1       │
-└──────┴─────────┘
-
-HIGH_BALANCE_LOAN_INDICAT
+│ ---      ┆ 
 ... [truncated]
 ```
 
@@ -494,23 +518,30 @@ shape: (2, 3)
 
 --- default rate by SELLER (n >= 20k) ---
 shape: (18, 3)
-┌─────────────────────────────────┬────────┬────────┐
-│ SELLER                          ┆ n      ┆ rate   │
-│ ---                             ┆ ---    ┆ ---    │
-│ str                             ┆ u32    ┆ f64    │
-╞═════════════════════════════════╪════════╪════════╡
-│ U.S. Bank N.A.                  ┆ 45849  ┆ 0.0848 │
-│ Loandepot.Com, Llc              ┆ 28345  ┆ 0.0461 │
-│ Caliber Home Loans, Inc.        ┆ 24056  ┆ 0.0425 │
-│ Flagstar Bank, Fsb              ┆ 40402  ┆ 0.0417 │
-│ Wells Fargo Bank, N.A.          ┆ 309551 ┆ 0.0414 │
-│ …                               ┆ …      ┆ …      │
-│ Other                           ┆ 932204 ┆ 0.0302 │
-│ Pennymac Corp.                  ┆ 23253  ┆ 0.0298 │
-│ Fairway Independent Mortgage C… ┆ 25015  ┆ 0.0292 │
-│ Franklin American Mortgage Com… ┆ 27207  ┆ 0.0228 │
-│ Jpmorgan Chase Bank, National … ┆ 97682  ┆ 0.0221 │
-└─────────────────────────────────┴────────┴────────┘
+┌───────────────────────────────────────────────────────────────┬────────┬────────┐
+│ SELLER                                                        ┆ n      ┆ rate   │
+│ ---                                                           ┆ ---    ┆ ---    │
+│ str                                                           ┆ u32    ┆ f64    │
+╞═══════════════════════════════════════════════════════════════╪════════╪════════╡
+│ U.S. Bank N.A.                                                ┆ 45849  ┆ 0.0848 │
+│ Loandepot.Com, Llc                                            ┆ 28345  ┆ 0.0461 │
+│ Caliber Home Loans, Inc.                                      ┆ 24056  ┆ 0.0425 │
+│ Flagstar Bank, Fsb                                            ┆ 40402  ┆ 0.0417 │
+│ Wells Fargo Bank, N.A.                                        ┆ 309551 ┆ 0.0414 │
+│ Nationstar Mortgage, Llc                                      ┆ 26094  ┆ 0.0383 │
+│ Movement Mortgage, Llc                                        ┆ 28701  ┆ 0.0383 │
+│ Amerihome Mortgage Company, Llc                               ┆ 33537  ┆ 0.0374 │
+│ United Shore Financial Services, Llc Dba United Wholesale Mo… ┆ 49905  ┆ 0.0371 │
+│ Truist Bank (Formerly Suntrust Bank)                          ┆ 45024  ┆ 0.0357 │
+│ Pmtt4                                                         ┆ 53039  ┆ 0.0354 │
+│ Quicken Loans Inc.                                            ┆ 36253  ┆ 0.0306 │
+│ Quicken Loans, Llc                                            ┆ 119581 ┆ 0.0304 │
+│ Other                                                         ┆ 932204 ┆ 0.0302 │
+│ Pennymac Corp.                                                ┆ 23253  ┆ 0.0298 │
+│ Fairway Independent Mortgage Corporation                      ┆ 25015  ┆ 0.0292 │
+│ Franklin American Mortgage Company                            ┆ 27207  ┆ 0.0228 │
+│ Jpmorgan Chase Bank, National Association                     ┆ 97682  ┆ 0.0221 │
+└───────────────────────────────────────────────────────────────┴────────┴────────┘
 ```
 
 ## Session display config
@@ -623,7 +654,7 @@ One vintage, and channel and geography are uncontrolled.
 
 ```
 --- numeric variance (drop anything with n_unique = 1) ---
-shape: (16, 2)
+shape: (14, 2)
 ┌────────────────┬──────────┐
 │ column         ┆ n_unique │
 │ ---            ┆ ---      │
@@ -636,15 +667,13 @@ shape: (16, 2)
 │ fico_missing   ┆ 2        │
 │ NO_UNITS       ┆ 4        │
 │ NUM_BO         ┆ 6        │
-│ MI_PCT         ┆ 29       │
 │ DTI            ┆ 58       │
+│ second_lien    ┆ 83       │
 │ OLTV           ┆ 96       │
-│ OCLTV          ┆ 112      │
 │ CSCORE_C       ┆ 218      │
 │ CSCORE_B       ┆ 221      │
 │ ORIG_TERM      ┆ 235      │
 │ ORIG_UPB       ┆ 969      │
-│ ORIG_RATE      ┆ 2141     │
 └────────────────┴──────────┘
 
 --- nulls after prep (all must be 0) ---
@@ -657,9 +686,35 @@ shape: (0, 2)
 └────────┴───────┘
 (empty above = clean)
 
-SELLER levels after merge: 37  (was 38)
-features: 11 numeric + 5 flags + 10 categorical
-shape: (2046851, 34)
+--- second_lien check ---
+  loans with a second lien : 86,974
+  max                      : 93.0
+
+SELLER levels after merge: 37  (kept in frame, not modeled)
+features: 9 numeric + 5 flags + 9 categorical
+shape: (2046851, 35)
+```
+
+```
+shape: (10, 5)
+┌──────┬───────┬─────────────┬──────────┬──────────────┐
+│ OLTV ┆ OCLTV ┆ second_lien ┆ ORIG_UPB ┆ default_flag │
+│ ---  ┆ ---   ┆ ---         ┆ ---      ┆ ---          │
+│ f64  ┆ f64   ┆ f64         ┆ f64      ┆ i8           │
+╞══════╪═══════╪═════════════╪══════════╪══════════════╡
+│ 6.0  ┆ 99.0  ┆ 93.0        ┆ 44000.0  ┆ 0            │
+│ 9.0  ┆ 95.0  ┆ 86.0        ┆ 109000.0 ┆ 0            │
+│ 14.0 ┆ 97.0  ┆ 83.0        ┆ 104000.0 ┆ 1            │
+│ 7.0  ┆ 90.0  ┆ 83.0        ┆ 92000.0  ┆ 0            │
+│ 15.0 ┆ 97.0  ┆ 82.0        ┆ 55000.0  ┆ 0            │
+│ 8.0  ┆ 90.0  ┆ 82.0        ┆ 110000.0 ┆ 0            │
+│ 22.0 ┆ 100.0 ┆ 78.0        ┆ 100000.0 ┆ 0            │
+│ 22.0 ┆ 100.0 ┆ 78.0        ┆ 100000.0 ┆ 0            │
+│ 22.0 ┆ 100.0 ┆ 78.0        ┆ 100000.0 ┆ 0            │
+│ 13.0 ┆ 90.0  ┆ 77.0        ┆ 50000.0  ┆ 0            │
+└──────┴───────┴─────────────┴──────────┴──────────────┘
+loans with second_lien > 50: 312
+loans with second_lien < 0 : 0
 ```
 
 ## Check ORIG_TERM against the 7-year income window
@@ -797,23 +852,23 @@ a single-period model. The LP cannot see capital velocity.
 - Mortgage PD models typically land 0.75 to 0.80.
 
 ```
-matrices :   0.2s   train=(1227572, 26)  positives=41,810
-fit      :   5.8s   width=130
+matrices :   0.3s   train=(1227572, 23)  positives=41,810
+fit      :   5.1s   width=92
 
-AUC train: 0.7731
-AUC test : 0.7705   (synthetic PD was 0.7178)
-mean pred: 0.034125   actual: 0.034109
+AUC train: 0.7703
+AUC test : 0.7681   (synthetic PD was 0.7178)
+mean pred: 0.034149   actual: 0.034109
 ```
 
 ## XGBoost and LightGBM baselines
 
 **What**
 - Fit both with native categorical handling. No tuning.
-- Report test AUC against the LogReg floor of 0.7705.
+- Report test AUC against the LogReg floor of 0.7681.
 
 **Why native categoricals instead of one-hot**
-- Both libraries split on categories directly. No 130-column expansion.
-- `SELLER` at 37 levels and `STATE` at 54 are exactly where trees beat one-hot: they can group levels by response rather than testing each dummy separately.
+- Both libraries split on categories directly. No 100-plus column expansion.
+- `STATE` at 54 levels is exactly where trees beat one-hot: they can group levels by response rather than testing each dummy separately.
 
 **No early stopping, deliberately**
 - Early stopping needs a watch set. The obvious candidate is `calib`, but that split is reserved for isotonic.
@@ -828,16 +883,16 @@ mean pred: 0.034125   actual: 0.034109
 - Train-test AUC gap. Trees overfit where LogReg cannot, so a gap above ~0.02 means depth needs pulling in.
 
 ```
-xgboost  :   6.2s
-  AUC train 0.8165   test 0.7781
-lightgbm :  11.1s
-  AUC train 0.8377   test 0.7768
+xgboost  :   5.9s
+  AUC train 0.8082   test 0.7761
+lightgbm :  10.5s
+  AUC train 0.8278   test 0.7750
 
 --- test AUC ---
   synthetic  0.7178
-  logreg     0.7705
-  xgboost    0.7781
-  lightgbm   0.7768
+  logreg     0.7681
+  xgboost    0.7761
+  lightgbm   0.7750
 ```
 
 ## Finding: the signal in mortgage default is mostly linear
@@ -845,19 +900,25 @@ lightgbm :  11.1s
 | Model | Test AUC | Train | Gap |
 |---|---|---|---|
 | Synthetic PD | 0.7178 | — | — |
-| Logistic regression | 0.7705 | 0.7731 | 0.0026 |
-| XGBoost | 0.7781 | 0.8165 | 0.0384 |
-| LightGBM | 0.7768 | 0.8377 | 0.0609 |
+| Logistic regression | 0.7681 | 0.7703 | 0.0022 |
+| XGBoost | 0.7761 | 0.8082 | 0.0321 |
+| LightGBM | 0.7750 | 0.8278 | 0.0528 |
 
-Trees beat LogReg by 0.0076 and 0.0063. Real at 410k rows, small in practice.
+Trees beat LogReg by 0.0080 and 0.0069. Real at 410k rows, small in practice.
 FICO, LTV, and DTI carry the signal and carry it linearly. This is why the
 industry ran on logistic scorecards for thirty years, and it belongs in the
 report rather than buried.
 
-LogReg's 0.0026 gap across 130 dummies means the `SELLER` and `STATE` dummies are
-earning their place, not memorizing. Both trees exceed the 0.02 gap threshold.
-LightGBM overfits harder and scores worse on test: `num_leaves=63` is too
-permissive at a 3.4% base rate.
+LogReg's 0.0022 gap across 92 dummies means the `STATE` dummies are earning their
+place, not memorizing. Both trees exceed the 0.02 gap threshold, though less than
+before the feature cut. LightGBM overfits harder and scores worse on test:
+`num_leaves=63` is too permissive at a 3.4% base rate.
+
+**Dropping four features cost almost nothing.** `ORIG_RATE`, `SELLER`, `OCLTV`, and
+`MI_PCT` came out, and XGBoost lost about 0.004 of test AUC. That is the useful
+result: the signal those columns carried was already in FICO, LTV, and DTI. We gave
+up nearly no accuracy and removed every feature that was priced off the outcome or
+keyed to lender identity rather than borrower risk.
 
 **No model selected yet.** AUC measures ranking. The LP does not rank, it does
 arithmetic on the PD value: `(1-PD)·I - PD·L`. A model can rank perfectly and
@@ -886,8 +947,8 @@ still hand back PDs that are 40% too high. Calibration decides this.
 **Expect** LogReg near-calibrated (its intercept forces the mean to match) and the trees overconfident in the tail, per their train-test gaps.
 
 ```
-catboost :  73.6s
-  AUC train 0.7814   test 0.7750   gap 0.0064
+catboost :  69.1s
+  AUC train 0.7788   test 0.7730   gap 0.0058
 
   logreg 0.7705 | xgboost 0.7781 | lightgbm 0.7768
 ```
@@ -896,18 +957,18 @@ catboost :  73.6s
 
 | Model | Test AUC | Train | Gap | Fit |
 |---|---|---|---|---|
-| Logistic regression | 0.7705 | 0.7731 | 0.0026 | 6s |
-| XGBoost | 0.7781 | 0.8165 | 0.0384 | 6s |
-| LightGBM | 0.7768 | 0.8377 | 0.0609 | 11s |
-| CatBoost | 0.7750 | 0.7814 | 0.0064 | 75s |
+| Logistic regression | 0.7681 | 0.7703 | 0.0022 | 5s |
+| XGBoost | 0.7761 | 0.8082 | 0.0321 | 6s |
+| LightGBM | 0.7750 | 0.8278 | 0.0528 | 11s |
+| CatBoost | 0.7730 | 0.7788 | 0.0058 | 69s |
 
-CatBoost was run as a check, not a candidate. It is built for exactly what this
-data has: high-cardinality categoricals (`SELLER` 37, `STATE` 54) and overfitting
-resistance.
+CatBoost was run as a check, not a candidate. Its selling point is overfitting
+resistance plus native handling of high-cardinality categoricals, though after the
+feature cut `STATE` at 54 levels is the only one left that qualifies.
 
 It did not beat XGBoost. Its ordered boosting worked as advertised, cutting the
-gap from 0.038 and 0.061 down to 0.0064, and gained no AUC doing it. So the
-overfitting was never the constraint. All three trees land at 0.775-0.778
+gap from 0.032 and 0.053 down to 0.0058, and gained no AUC doing it. So the
+overfitting was never the constraint. All three trees land at 0.773-0.776
 regardless of algorithm, which makes "the signal is linear" a hard claim rather
 than a suspicion that we tuned badly.
 
@@ -990,70 +1051,70 @@ here and clean after isotonic, that is the evidence that the calibration step
 earns its place in the pipeline.
 
 ```
-logreg     ECE 0.00103   Brier 0.031580   AUC 0.7705
+logreg     ECE 0.00070   Brier 0.031607   AUC 0.7681
 shape: (10, 6)
 ┌─────┬───────┬────────┬────────┬─────────┬───────┐
 │ bin ┆ n     ┆ pred   ┆ obs    ┆ gap     ┆ ratio │
 │ --- ┆ ---   ┆ ---    ┆ ---    ┆ ---     ┆ ---   │
 │ i64 ┆ i64   ┆ f64    ┆ f64    ┆ f64     ┆ f64   │
 ╞═════╪═══════╪════════╪════════╪═════════╪═══════╡
-│ 0   ┆ 40993 ┆ 0.0032 ┆ 0.0026 ┆ -0.0006 ┆ 0.8   │
-│ 1   ┆ 40992 ┆ 0.0063 ┆ 0.0057 ┆ -0.0007 ┆ 0.89  │
-│ 2   ┆ 40993 ┆ 0.0095 ┆ 0.0097 ┆ 0.0002  ┆ 1.02  │
-│ 3   ┆ 40992 ┆ 0.0133 ┆ 0.0137 ┆ 0.0004  ┆ 1.03  │
-│ 4   ┆ 40993 ┆ 0.018  ┆ 0.0171 ┆ -0.0008 ┆ 0.95  │
-│ 5   ┆ 40993 ┆ 0.0241 ┆ 0.0241 ┆ 0.0     ┆ 1.0   │
-│ 6   ┆ 40992 ┆ 0.0324 ┆ 0.0338 ┆ 0.0014  ┆ 1.04  │
-│ 7   ┆ 40992 ┆ 0.0446 ┆ 0.0462 ┆ 0.0016  ┆ 1.03  │
-│ 8   ┆ 40993 ┆ 0.065  ┆ 0.0665 ┆ 0.0015  ┆ 1.02  │
-│ 9   ┆ 40993 ┆ 0.1249 ┆ 0.1218 ┆ -0.0031 ┆ 0.98  │
+│ 0   ┆ 40993 ┆ 0.0033 ┆ 0.0024 ┆ -0.0008 ┆ 0.74  │
+│ 1   ┆ 40992 ┆ 0.0065 ┆ 0.0064 ┆ -0.0001 ┆ 0.99  │
+│ 2   ┆ 40993 ┆ 0.0097 ┆ 0.0096 ┆ -0.0001 ┆ 0.99  │
+│ 3   ┆ 40992 ┆ 0.0135 ┆ 0.0137 ┆ 0.0002  ┆ 1.02  │
+│ 4   ┆ 40993 ┆ 0.0182 ┆ 0.0178 ┆ -0.0004 ┆ 0.98  │
+│ 5   ┆ 40993 ┆ 0.0243 ┆ 0.025  ┆ 0.0007  ┆ 1.03  │
+│ 6   ┆ 40992 ┆ 0.0327 ┆ 0.0331 ┆ 0.0005  ┆ 1.01  │
+│ 7   ┆ 40992 ┆ 0.0449 ┆ 0.0458 ┆ 0.0009  ┆ 1.02  │
+│ 8   ┆ 40993 ┆ 0.0652 ┆ 0.0662 ┆ 0.0009  ┆ 1.01  │
+│ 9   ┆ 40993 ┆ 0.1234 ┆ 0.1211 ┆ -0.0023 ┆ 0.98  │
 └─────┴───────┴────────┴────────┴─────────┴───────┘
 
-xgboost    ECE 0.00123   Brier 0.031481   AUC 0.7781
+xgboost    ECE 0.00087   Brier 0.031512   AUC 0.7761
 shape: (10, 6)
 ┌─────┬───────┬────────┬────────┬─────────┬───────┐
 │ bin ┆ n     ┆ pred   ┆ obs    ┆ gap     ┆ ratio │
 │ --- ┆ ---   ┆ ---    ┆ ---    ┆ ---     ┆ ---   │
 │ i64 ┆ i64   ┆ f64    ┆ f64    ┆ f64     ┆ f64   │
 ╞═════╪═══════╪════════╪════════╪═════════╪═══════╡
-│ 0   ┆ 40993 ┆ 0.0022 ┆ 0.0023 ┆ 0.0     ┆ 1.02  │
-│ 1   ┆ 40992 ┆ 0.005  ┆ 0.0047 ┆ -0.0003 ┆ 0.93  │
-│ 2   ┆ 40993 ┆ 0.0081 ┆ 0.0084 ┆ 0.0004  ┆ 1.04  │
-│ 3   ┆ 40992 ┆ 0.0118 ┆ 0.0127 ┆ 0.0009  ┆ 1.08  │
-│ 4   ┆ 40993 ┆ 0.0167 ┆ 0.0176 ┆ 0.0009  ┆ 1.06  │
-│ 5   ┆ 40992 ┆ 0.0231 ┆ 0.0248 ┆ 0.0016  ┆ 1.07  │
-│ 6   ┆ 40993 ┆ 0.032  ┆ 0.032  ┆ 0.0     ┆ 1.0   │
-│ 7   ┆ 40991 ┆ 0.0449 ┆ 0.0463 ┆ 0.0014  ┆ 1.03  │
-│ 8   ┆ 40994 ┆ 0.0667 ┆ 0.0678 ┆ 0.0012  ┆ 1.02  │
-│ 9   ┆ 40993 ┆ 0.1301 ┆ 0.1245 ┆ -0.0056 ┆ 0.96  │
+│ 0   ┆ 40993 ┆ 0.0022 ┆ 0.0021 ┆ -0.0    ┆ 0.98  │
+│ 1   ┆ 40992 ┆ 0.005  ┆ 0.0051 ┆ 0.0001  ┆ 1.02  │
+│ 2   ┆ 40993 ┆ 0.0082 ┆ 0.0091 ┆ 0.0009  ┆ 1.11  │
+│ 3   ┆ 40992 ┆ 0.0121 ┆ 0.0125 ┆ 0.0004  ┆ 1.03  │
+│ 4   ┆ 40993 ┆ 0.017  ┆ 0.0175 ┆ 0.0005  ┆ 1.03  │
+│ 5   ┆ 40993 ┆ 0.0236 ┆ 0.0243 ┆ 0.0008  ┆ 1.03  │
+│ 6   ┆ 40992 ┆ 0.0324 ┆ 0.0334 ┆ 0.001   ┆ 1.03  │
+│ 7   ┆ 40992 ┆ 0.0452 ┆ 0.0462 ┆ 0.001   ┆ 1.02  │
+│ 8   ┆ 40993 ┆ 0.0663 ┆ 0.066  ┆ -0.0003 ┆ 1.0   │
+│ 9   ┆ 40993 ┆ 0.1286 ┆ 0.1249 ┆ -0.0038 ┆ 0.97  │
 └─────┴───────┴────────┴────────┴─────────┴───────┘
 
-lightgbm   ECE 0.00114   Brier 0.031502   AUC 0.7768
-shape: (10, 6)
-┌─────┬───────┬────────┬────────┬────────┬───────┐
-│ bin ┆ n     ┆ pred   ┆ obs    ┆ gap    ┆ ratio │
-│ --- ┆ ---   ┆ ---    ┆ ---    ┆ ---    ┆ ---   │
-│ i64 ┆ i64   ┆ f64    ┆ f64    ┆ f64    ┆ f64   │
-╞═════╪═══════╪════════╪════════╪════════╪═══════╡
-│ 0   ┆ 40993 ┆ 0.0023 ┆ 0.0023 ┆ 0.0001 ┆ 1.03  │
-│ 1   ┆ 40992 ┆ 0.005  ┆ 0.0051 ┆ 0.0    ┆ 1.01  │
-│ 2   ┆ 40993 ┆ 0.008  ┆ 0.0082 ┆ 0.0001 ┆ 1.02  │
-│ 3   ┆ 40992 ┆ 0.0118 ┆ 0.013  ┆ 0.0012 ┆ 1.1   │
-│ 4   ┆ 40993 ┆ 0.0165 ┆ 0.0171 ┆ 0.0005 ┆ 1.03  │
-│ 5   ┆ 40992 ┆ 0.0229 ┆ 0.0253 ┆ 0.0024 ┆ 1.11  │
-│ 6   ┆ 40993 ┆ 0.0319 ┆ 0.032  ┆ 0.0001 ┆ 1.0   │
-│ 7   ┆ 40992 ┆ 0.045  ┆ 0.046  ┆ 0.001  ┆ 1.02  │
-│ 8   ┆ 40993 ┆ 0.0671 ┆ 0.0679 ┆ 0.0008 ┆ 1.01  │
-│ 9   ┆ 40993 ┆ 0.1292 ┆ 0.1242 ┆ -0.005 ┆ 0.96  │
-└─────┴───────┴────────┴────────┴────────┴───────┘
-
-catboost   ECE 0.00086   Brier 0.031480   AUC 0.7750
+lightgbm   ECE 0.00106   Brier 0.031519   AUC 0.7750
 shape: (10, 6)
 ┌─────┬───────┬────────┬────────┬─────────┬───────┐
 │ bin ┆ n     ┆ pred   ┆ obs    ┆ gap     ┆ ratio │
 │ --- ┆ ---   ┆ ---    ┆ ---    ┆ ---     ┆ ---   │
 │ i64 ┆ i64   ┆ f64    ┆ f64    ┆ f64     ┆ f64   │
-╞═════╪═══════╪════════╪════════╪════
+╞═════╪═══════╪════════╪════════╪═════════╪═══════╡
+│ 0   ┆ 40993 ┆ 0.0023 ┆ 0.0023 ┆ 0.0     ┆ 1.02  │
+│ 1   ┆ 40992 ┆ 0.0051 ┆ 0.0049 ┆ -0.0002 ┆ 0.96  │
+│ 2   ┆ 40993 ┆ 0.0082 ┆ 0.0088 ┆ 0.0006  ┆ 1.08  │
+│ 3   ┆ 40992 ┆ 0.012  ┆ 0.0133 ┆ 0.0013  ┆ 1.1   │
+│ 4   ┆ 40993 ┆ 0.0169 ┆ 0.0175 ┆ 0.0005  ┆ 1.03  │
+│ 5   ┆ 40993 ┆ 0.0234 ┆ 0.0253 ┆ 0.0019  ┆ 1.08  │
+│ 6   ┆ 40992 ┆ 0.0322 ┆ 0.0323 ┆ 0.0001  ┆ 1.0   │
+│ 7   ┆ 40992 ┆ 0.045  ┆ 0.0465 ┆ 0.0015  ┆ 1.03  │
+│ 8   ┆ 40993 ┆ 0.0664 ┆ 0.0664 ┆ -0.0    ┆ 1.0   │
+│ 9   ┆ 40993 ┆ 0.1282 ┆ 0.1238 ┆ -0.0044 ┆ 0.97  │
+└─────┴───────┴────────┴────────┴─────────┴───────┘
+
+catboost   ECE 0.00061   Brier 0.031517   AUC 0.7730
+shape: (10, 6)
+┌─────┬───────┬────────┬────────┬─────────┬───────┐
+│ bin ┆ n     ┆ pred   ┆ obs    ┆ gap     ┆ ratio │
+│ --- ┆ ---   ┆ ---    ┆ ---    ┆ ---     ┆ ---   │
+│ i64 ┆ i64   ┆ f64    ┆ f64    ┆ f64     ┆ f64   │
+╞═════╪═══════╪══════
 ... [truncated]
 ```
 
@@ -1061,10 +1122,10 @@ shape: (10, 6)
 
 | Model | ECE | Brier | AUC |
 |---|---|---|---|
-| CatBoost | 0.00086 | 0.031480 | 0.7750 |
-| LogReg | 0.00103 | 0.031580 | 0.7705 |
-| LightGBM | 0.00114 | 0.031502 | 0.7768 |
-| XGBoost | 0.00123 | 0.031481 | 0.7781 |
+| CatBoost | 0.00061 | 0.031517 | 0.7730 |
+| LogReg | 0.00070 | 0.031607 | 0.7681 |
+| XGBoost | 0.00087 | 0.031512 | 0.7761 |
+| LightGBM | 0.00106 | 0.031519 | 0.7750 |
 
 ECE of 0.001 against a 3.4% base rate means the average bin is off by a tenth of
 a percentage point.
@@ -1075,16 +1136,26 @@ is what training was already asking for. Add 1.2M rows and no class weighting an
 there is little left to fix.
 
 **ECE has a floor.** At ~41k loans per bin, sampling noise is roughly ±0.0008, so
-a perfect model would still score ~0.0006 here. CatBoost at 0.00086 is 1.4x the
-floor, about as good as this test set can measure.
+a perfect model would still score ~0.0006 here. CatBoost at 0.00061 is sitting on
+that floor. This test set cannot distinguish it from perfect.
 
-**The overfitting shows in bin 9**, the top decile at ~12% PD:
+**The overfitting shows in bin 9**, the top decile at ~12-13% PD:
 
 | Model | pred | obs | |
 |---|---|---|---|
-| XGBoost | 0.1301 | 0.1245 | over by 4.5% |
-| LightGBM | 0.1292 | 0.1242 | over by 4.0% |
-| CatBoost | 0.1228 | 0.1241 | under by 1.0% |
+| LightGBM | 0.1282 | 0.1238 | over by 3.6% |
+| XGBoost | 0.1286 | 0.1249 | over by 3.0% |
+| CatBoost | 0.1219 | 0.1235 | under by 1.3% |
+
+Both gradient-boosted trees overstate risk at the top, which is where the LP's
+riskiest funded loans sit. CatBoost understates slightly instead. For an optimizer
+that multiplies PD by dollars, erring low is the less comfortable direction, but
+1.3% on the worst decile is small.
+
+**CatBoost is the most conservative model where it counts.** Its two safest bins
+run 13-15% below observed, and its two riskiest run 1-2% above. That is the
+opposite tilt from the other trees and the reason its ECE lands lowest despite
+having the weakest AUC of the three.
 
 **This depends on the split.** Train and test were assigned at random, so both
 come from the same 2017 pool and look alike (statistically: independent and
@@ -1097,8 +1168,10 @@ claiming the models are calibrated in general.
 The likely finding is that it changes little, which is worth reporting. It could
 also make calibration worse by fitting noise, so measure on test.
 
-Selection stays open. CatBoost and XGBoost tie on Brier (1e-6 apart). CatBoost
-wins ECE, XGBoost wins AUC by 0.0031.
+**Selection: CatBoost.** Lowest ECE, smallest train-test gap (0.0058), and the only
+model that does not overstate the top decile. It gives up 0.0031 of AUC to XGBoost,
+which is inside noise at 13,982 positives. The LP does arithmetic on the PD value,
+not the ranking, so calibration is the right tiebreaker.
 
 ## Calibration, magnified
 
@@ -1130,16 +1203,23 @@ percentage.
 
 | | ratio | actual error |
 |---|---|---|
-| CatBoost bin 0 | 0.75, looks bad | 0.0008 |
-| XGBoost bin 9 | 0.96, looks fine | 0.0056 |
+| LogReg bin 0 | 0.74, looks terrible | 0.0008 |
+| CatBoost bin 0 | 0.85, looks bad | 0.0005 |
+| XGBoost bin 9 | 0.97, looks fine | 0.0038 |
 
-XGBoost is off by 7x more in the units the LP cares about. ECE already measures
-error size, so it stays the metric. Use the ratio panel to see shape, not to pick
-a model.
+XGBoost is off by 7x more than CatBoost in the units the LP cares about, while
+looking far better on the ratio panel. ECE already measures error size, so it
+stays the metric. Use the ratio panel to see shape, not to pick a model.
 
 **The tails split.** The overfit models (XGBoost, LightGBM) get the safest loans
-right and overshoot the riskiest. CatBoost does the opposite. Its regularization
-helps where data is thin and hurts where predictions need to be extreme.
+right and overshoot the riskiest. CatBoost does the opposite: it undershoots the
+two safest bins by 13-15% and runs 1-2% high at the top. Its regularization helps
+where data is thin and hurts where predictions need to be extreme.
+
+**Both tails are cheap for the LP anyway.** The safest bins carry PDs near 0.003,
+so even a 15% miss is five ten-thousandths of a dollar. The riskiest bins are the
+ones the optimizer mostly declines to fund. The errors that would matter are in
+the middle, and there every model sits inside 3%.
 
 ## Isotonic calibration
 
@@ -1162,69 +1242,69 @@ floor. Success is ECE not getting worse, plus a smaller error in bin 9.
 a loan is risk-free, and that loan wins the objective outright. Counted below.
 
 ```
-calib preds :   1.5s
+calib preds :   1.2s
 
 --- zero-PD check ---
-  logreg    zeros:  1,235   min: 0.000000   max: 0.4444
-  xgboost   zeros:    316   min: 0.000000   max: 0.2857
-  lightgbm  zeros:    672   min: 0.000000   max: 0.3871
-  catboost  zeros:  3,168   min: 0.000000   max: 0.7500
+  logreg    zeros:  1,083   min: 0.000000   max: 0.3846
+  xgboost   zeros:    499   min: 0.000000   max: 0.3431
+  lightgbm  zeros:  1,279   min: 0.000000   max: 1.0000
+  catboost  zeros:  3,971   min: 0.000000   max: 0.3488
 
-logreg +iso  ECE 0.00117   Brier 0.031577   AUC 0.7702
+logreg +iso  ECE 0.00063   Brier 0.031607   AUC 0.7678
 shape: (10, 6)
 ┌─────┬───────┬────────┬────────┬─────────┬───────┐
 │ bin ┆ n     ┆ pred   ┆ obs    ┆ gap     ┆ ratio │
 │ --- ┆ ---   ┆ ---    ┆ ---    ┆ ---     ┆ ---   │
 │ i64 ┆ i64   ┆ f64    ┆ f64    ┆ f64     ┆ f64   │
 ╞═════╪═══════╪════════╪════════╪═════════╪═══════╡
-│ 0   ┆ 37334 ┆ 0.0027 ┆ 0.0025 ┆ -0.0002 ┆ 0.91  │
-│ 1   ┆ 33822 ┆ 0.0055 ┆ 0.0046 ┆ -0.0009 ┆ 0.83  │
-│ 2   ┆ 50549 ┆ 0.008  ┆ 0.0093 ┆ 0.0013  ┆ 1.16  │
-│ 3   ┆ 40946 ┆ 0.013  ┆ 0.0136 ┆ 0.0006  ┆ 1.05  │
-│ 4   ┆ 34619 ┆ 0.0175 ┆ 0.0161 ┆ -0.0014 ┆ 0.92  │
-│ 5   ┆ 40359 ┆ 0.0223 ┆ 0.0231 ┆ 0.0008  ┆ 1.04  │
-│ 6   ┆ 44845 ┆ 0.0316 ┆ 0.0323 ┆ 0.0007  ┆ 1.02  │
-│ 7   ┆ 35287 ┆ 0.0455 ┆ 0.0426 ┆ -0.0029 ┆ 0.94  │
-│ 8   ┆ 44726 ┆ 0.0626 ┆ 0.0617 ┆ -0.0009 ┆ 0.99  │
-│ 9   ┆ 47439 ┆ 0.1181 ┆ 0.1161 ┆ -0.002  ┆ 0.98  │
+│ 0   ┆ 35685 ┆ 0.0028 ┆ 0.0024 ┆ -0.0004 ┆ 0.87  │
+│ 1   ┆ 45892 ┆ 0.0055 ┆ 0.006  ┆ 0.0004  ┆ 1.08  │
+│ 2   ┆ 29549 ┆ 0.0083 ┆ 0.0091 ┆ 0.0008  ┆ 1.1   │
+│ 3   ┆ 48505 ┆ 0.0126 ┆ 0.0127 ┆ 0.0001  ┆ 1.01  │
+│ 4   ┆ 42669 ┆ 0.0176 ┆ 0.0176 ┆ 0.0001  ┆ 1.0   │
+│ 5   ┆ 41197 ┆ 0.0248 ┆ 0.0244 ┆ -0.0004 ┆ 0.98  │
+│ 6   ┆ 39249 ┆ 0.0322 ┆ 0.0319 ┆ -0.0003 ┆ 0.99  │
+│ 7   ┆ 37255 ┆ 0.045  ┆ 0.0437 ┆ -0.0014 ┆ 0.97  │
+│ 8   ┆ 46201 ┆ 0.0639 ┆ 0.0632 ┆ -0.0008 ┆ 0.99  │
+│ 9   ┆ 43724 ┆ 0.1204 ┆ 0.1185 ┆ -0.0019 ┆ 0.98  │
 └─────┴───────┴────────┴────────┴─────────┴───────┘
 
-xgboost +iso  ECE 0.00100   Brier 0.031479   AUC 0.7780
+xgboost +iso  ECE 0.00102   Brier 0.031509   AUC 0.7760
 shape: (10, 6)
 ┌─────┬───────┬────────┬────────┬─────────┬───────┐
 │ bin ┆ n     ┆ pred   ┆ obs    ┆ gap     ┆ ratio │
 │ --- ┆ ---   ┆ ---    ┆ ---    ┆ ---     ┆ ---   │
 │ i64 ┆ i64   ┆ f64    ┆ f64    ┆ f64     ┆ f64   │
 ╞═════╪═══════╪════════╪════════╪═════════╪═══════╡
-│ 0   ┆ 32208 ┆ 0.0022 ┆ 0.002  ┆ -0.0002 ┆ 0.92  │
-│ 1   ┆ 49502 ┆ 0.0049 ┆ 0.0044 ┆ -0.0004 ┆ 0.91  │
-│ 2   ┆ 38992 ┆ 0.007  ┆ 0.0082 ┆ 0.0012  ┆ 1.18  │
-│ 3   ┆ 40675 ┆ 0.0117 ┆ 0.0126 ┆ 0.0009  ┆ 1.07  │
-│ 4   ┆ 39057 ┆ 0.0165 ┆ 0.017  ┆ 0.0005  ┆ 1.03  │
-│ 5   ┆ 44574 ┆ 0.024  ┆ 0.0243 ┆ 0.0003  ┆ 1.01  │
-│ 6   ┆ 33489 ┆ 0.031  ┆ 0.0303 ┆ -0.0007 ┆ 0.98  │
-│ 7   ┆ 44624 ┆ 0.0439 ┆ 0.0439 ┆ -0.0    ┆ 1.0   │
-│ 8   ┆ 44354 ┆ 0.0678 ┆ 0.0658 ┆ -0.0019 ┆ 0.97  │
-│ 9   ┆ 42451 ┆ 0.1265 ┆ 0.123  ┆ -0.0035 ┆ 0.97  │
+│ 0   ┆ 34361 ┆ 0.0021 ┆ 0.0018 ┆ -0.0003 ┆ 0.87  │
+│ 1   ┆ 38916 ┆ 0.0046 ┆ 0.0046 ┆ 0.0001  ┆ 1.01  │
+│ 2   ┆ 46490 ┆ 0.0073 ┆ 0.0083 ┆ 0.001   ┆ 1.14  │
+│ 3   ┆ 43092 ┆ 0.0114 ┆ 0.0126 ┆ 0.0012  ┆ 1.11  │
+│ 4   ┆ 41893 ┆ 0.0177 ┆ 0.0172 ┆ -0.0005 ┆ 0.97  │
+│ 5   ┆ 41184 ┆ 0.0246 ┆ 0.0243 ┆ -0.0003 ┆ 0.99  │
+│ 6   ┆ 29853 ┆ 0.0314 ┆ 0.0324 ┆ 0.0009  ┆ 1.03  │
+│ 7   ┆ 49887 ┆ 0.0453 ┆ 0.0433 ┆ -0.002  ┆ 0.95  │
+│ 8   ┆ 35617 ┆ 0.0641 ┆ 0.063  ┆ -0.0011 ┆ 0.98  │
+│ 9   ┆ 48633 ┆ 0.1198 ┆ 0.1176 ┆ -0.0022 ┆ 0.98  │
 └─────┴───────┴────────┴────────┴─────────┴───────┘
 
-lightgbm +iso  ECE 0.00096   Brier 0.031503   AUC 0.7766
+lightgbm +iso  ECE 0.00101   Brier 0.031519   AUC 0.7748
 shape: (10, 6)
 ┌─────┬───────┬────────┬────────┬─────────┬───────┐
 │ bin ┆ n     ┆ pred   ┆ obs    ┆ gap     ┆ ratio │
 │ --- ┆ ---   ┆ ---    ┆ ---    ┆ ---     ┆ ---   │
 │ i64 ┆ i64   ┆ f64    ┆ f64    ┆ f64     ┆ f64   │
 ╞═════╪═══════╪════════╪════════╪═════════╪═══════╡
-│ 0   ┆ 40912 ┆ 0.0025 ┆ 0.0023 ┆ -0.0002 ┆ 0.93  │
-│ 1   ┆ 31615 ┆ 0.0047 ┆ 0.0048 ┆ 0.0002  ┆ 1.03  │
-│ 2   ┆ 39314 ┆ 0.0068 ┆ 0.0068 ┆ -0.0001 ┆ 0.99  │
-│ 3   ┆ 43162 ┆ 0.0109 ┆ 0.0122 ┆ 0.0013  ┆ 1.12  │
-│ 4   ┆ 46353 ┆ 0.0163 ┆ 0.0165 ┆ 0.0003  ┆ 1.02  │
-│ 5   ┆ 43194 ┆ 0.0235 ┆ 0.0246 ┆ 0.0012  ┆ 1.05  │
-│ 6   ┆ 41001 ┆ 0.0329 ┆ 0.0316 ┆ -0.0013 ┆ 0.96  │
-│ 7   ┆ 37595 ┆ 0.0458 ┆ 0.045  ┆ -0.0008 ┆ 0.98  │
-│ 8   ┆ 39918 ┆ 0.0653 ┆ 0.064  ┆ -0.0013 ┆ 0.98  │
-│ 9   ┆ 46862 ┆ 0.1218 ┆ 0.1189 ┆ -0.003  ┆ 0.98  │
+│ 0   ┆ 33170 ┆ 0.0023 ┆ 0.0021 ┆ -0.0001 ┆ 0.93  │
+│ 1   ┆ 45562 ┆ 0.0047 ┆ 0.0046 ┆ -0.0001 ┆ 0.98  │
+│ 2   ┆ 43249 ┆ 0.0074 ┆ 0.0085 ┆ 0.001   ┆ 1.14  │
+│ 3   ┆ 35229 ┆ 0.0117 ┆ 0.0129 ┆ 0.0012  ┆ 1.1   │
+│ 4   ┆ 40690 ┆ 0.017  ┆ 0.0166 ┆ -0.0004 ┆ 0.98  │
+│ 5   ┆ 37978 ┆ 0.0228 ┆ 0.0238 ┆ 0.0009  ┆ 1.04  │
+│ 6   ┆ 47997 ┆ 0.0316 ┆ 0.0308 ┆ -0.0008 ┆ 0.98  │
+│ 7   ┆ 42749 ┆ 0.0466 ┆ 0.0459 ┆ -0.0008 ┆ 0.98  │
+│ 8   ┆ 39594 ┆ 0.066  ┆ 0.0648 ┆ -0.0012 ┆ 0.98  │
+│ 9   ┆ 43708 ┆ 0.1246 ┆ 0.1213 ┆ -0.0034 ┆ 0.97  │
 └─────┴───────┴────────┴────────┴─────────┴───────┘
 
 catboost +iso  ECE 
@@ -1235,10 +1315,10 @@ catboost +iso  ECE
 
 | model | ECE raw | ECE iso | delta | AUC raw | AUC iso |
 |---|---|---|---|---|---|
-| logreg | 0.00103 | 0.00117 | +0.00014 | 0.7705 | 0.7702 |
-| xgboost | 0.00123 | 0.00100 | -0.00023 | 0.7781 | 0.7780 |
-| lightgbm | 0.00114 | 0.00096 | -0.00018 | 0.7768 | 0.7766 |
-| catboost | 0.00086 | 0.00094 | +0.00008 | 0.7750 | 0.7747 |
+| logreg | 0.00070 | 0.00063 | -0.00007 | 0.7681 | 0.7678 |
+| xgboost | 0.00087 | 0.00102 | +0.00015 | 0.7761 | 0.7760 |
+| lightgbm | 0.00106 | 0.00101 | -0.00005 | 0.7750 | 0.7748 |
+| catboost | 0.00061 | 0.00074 | +0.00013 | 0.7730 | 0.7728 |
 
 Every delta is smaller than the ~0.0006 measurement floor. Two models improved,
 two got worse. That pattern is noise, not signal. Brier is unchanged to the fifth
@@ -1246,26 +1326,30 @@ decimal.
 
 **It costs AUC.** All four dropped. Isotonic maps distinct predictions to the same
 value, which destroys ranking information. The bin counts show it: raw bins were
-all ~40,993 by construction, but after isotonic LogReg's bin 1 holds 33,822 and
-bin 2 holds 50,549. Those are ties.
+all ~40,993 by construction, but after isotonic LogReg's bin 2 holds 29,549 and
+bin 3 holds 48,505. Those are ties.
 
 **It introduces PD = 0.** Every model now has loans it calls risk-free:
 
 | model | zeros | max |
 |---|---|---|
-| catboost | 3,168 | 0.75 |
-| logreg | 1,235 | 0.4444 |
-| lightgbm | 672 | 0.3871 |
-| xgboost | 316 | 0.2857 |
+| catboost | 3,971 | 0.3488 |
+| lightgbm | 1,279 | 1.0000 |
+| logreg | 1,083 | 0.3846 |
+| xgboost | 499 | 0.3431 |
 
 A PD of 0 tells the LP the loan cannot default, so its expected return is the full
 interest and it gets funded first. Nothing in the data supports that claim. It
 happens because isotonic's bottom block covered a stretch of `calib` where no
 loans defaulted, and it has no prior pulling it off zero.
 
-**The tail rests on tiny samples.** Those max values are simple fractions: 0.75,
-4/9, 2/7. Isotonic's top block is a handful of loans, and its estimate of the
-riskiest PDs is fit on single-digit counts.
+**LightGBM produces a PD of 1.0.** The mirror-image failure: isotonic's top block
+landed on a stretch of `calib` where every loan defaulted, so it declares those
+loans certain to fail. Same cause as the zeros, opposite end.
+
+**The tail rests on tiny samples.** A max of exactly 1.0 is a block where every
+loan defaulted, which at these counts is a handful of loans. Isotonic's estimate
+of the most extreme PDs is fit on single-digit samples at both ends.
 
 **Decision: ship raw predictions.** The models were already calibrated.
 Isotonic's only measurable effects here are lost AUC and impossible PDs. This
@@ -1276,47 +1360,66 @@ for it to correct. Under a temporal split across vintages there would be.
 
 | | CatBoost | XGBoost |
 |---|---|---|
-| Test AUC | 0.7750 | 0.7781 |
-| Brier | 0.031480 | 0.031481 |
-| ECE | 0.00086 | 0.00123 |
-| Train-test gap | 0.0064 | 0.0384 |
+| Test AUC | 0.7730 | 0.7761 |
+| Brier | 0.031517 | 0.031512 |
+| ECE | 0.00061 | 0.00087 |
+| Train-test gap | 0.0058 | 0.0321 |
 
-AUC and Brier are ties. The 0.0031 AUC difference is inside noise at 13,982
-positives, and Brier separates them at the sixth decimal.
+The first two rows are a tie. XGBoost ranks loans slightly better, but the gap is
+small enough to be luck given how few defaults we have to measure against. Brier
+splits them at the fifth decimal, which is no split at all.
 
-The train-test gap does not tie. CatBoost's is 6x smaller, meaning it is not
-leaning on memorized training rows. That matters because our calibration result
-already carries an IID caveat: it holds because train and test are the same
-distribution. Shipping the model with the larger gap alongside that caveat is a
-weak position.
+The last row is not a tie. The train-test gap is how much better a model does on
+the loans it studied than on loans it has never seen. A big gap means it memorized
+instead of learned. CatBoost's gap is six times smaller.
+
+That matters here for a specific reason. Our calibration result only holds because
+the training loans and the test loans came from the same 2017 pool and look alike.
+A real lender does not get that. So we already have to say "this may not hold
+elsewhere." Picking the model that leans hardest on memorized rows would make that
+caveat worse.
+
+Two more points for CatBoost:
+
+- Its calibration error is as low as this test set can measure. We cannot tell it
+  apart from perfect.
+- It is the only model that does not overpredict risk on the riskiest loans, which
+  is where the optimizer makes its hardest calls.
 
 **Decision:** CatBoost, raw predictions, no isotonic. Untuned. This notebook is
-scaffolding to unblock the LP; track 1 delivers the tuned model in week 6.
+scaffolding to unblock the LP; the tuned model comes in week 6.
 
 ## Naive baseline scorer
 
-**What:** a rule-based risk score with no ML in it. Bucket the training loans by
-FICO grade x Loan-To-Value (LTV) band, compute the plain historical default rate in each bucket,
-then score test loans by looking up which bucket they fall in.
+**What this is:** a lookup table, not a model. Sort the training loans into
+buckets by credit grade and how much of the house they borrowed against
+(Loan-To-Value, or LTV). Count what fraction of each bucket actually defaulted.
+To score a new loan, find its bucket and read off that number.
 
-**Why it exists:** our claim is that calibrated probabilities plus optimization
-beat a naive rule. If the naive rule ranked loans using CatBoost's PDs, both
-strategies would share the same risk numbers and we would only be testing LP vs
-greedy. This scorer owes nothing to the model, so the comparison is real.
+That is roughly how lending worked before machine learning. No fitting, no
+training, just historical rates.
 
-**Why these bins:** `credit_grade` is already built from `CSCORE_B`. LTV cuts at
-60/70/80/90/95 which mirror what an underwriter uses, and 80 is the mortgage insurance
-boundary. 5 credit grades x 6 LTV bins = 30 buckets.
+**Why we need it.** Our claim is that good default probabilities (from ML) plus optimization (from LP)
+beat a simple lookup rule. To test that, the simple rule has to be genuinely independent.
+If the naive scorer borrowed CatBoost's numbers, both sides would carry the same
+view of risk and we would only be comparing the optimizer against greedy sorting.
+This scorer owes the model nothing, so the comparison means something.
 
-**Built on train only.** Same rule as the model. Using test to build the lookup
-would leak the answers into the baseline and flatter it.
+**Why these buckets.** `credit_grade` is already built from FICO. The LTV cuts at
+60/70/80/90/95 are the ones underwriters actually use, and 80 is where mortgage
+insurance kicks in. Five credit grades times six LTV bands gives 30 buckets.
 
-**Thin buckets fall back.** Fewer than 500 loans and the bucket rate is unstable,
-so it falls back to the FICO grade's overall rate. Still rule-based, just
-coarser.
+**Built on training loans only.** Same rule the model follows. Building the lookup
+from test loans would mean the baseline had already seen the answers, which would
+make it look better than it is.
 
-**The check:** this should score meaningfully worse than CatBoost's 0.7750 AUC.
-If it scores close, the model is not earning its place.
+**Small buckets fall back.** Under 500 loans and the rate bounces around too much
+to trust, so those buckets use the credit grade's overall rate instead. Still a
+rule, just a coarser one.
+
+**What we expect.** This should score clearly worse than CatBoost's 0.7730 AUC. If
+it comes close, the model is not earning its place in the pipeline and we should
+say so.
 
 ```
 --- default rate % by credit grade (rows) x OLTV bin (cols), train only ---
@@ -1355,7 +1458,7 @@ buckets: 30   fell back to grade rate: 6   book rate: 0.034059
   mean            : 0.034054   actual: 0.034109
 
   AUC naive scorer : 0.7131
-  AUC catboost     : 0.7750
+  AUC catboost     : 0.7730
 ```
 
 ## Finding: the naive scorer works, and it reframes our claim
@@ -1370,36 +1473,41 @@ Default rate % by credit grade x OLTV bin, train only:
 | Fair/Poor | 7.16 | 8.94 | 9.77 | 12.07 | 15.92 | 15.41 |
 | Unknown | 2.95 (fell back) |
 
-Risk only rises as LTV goes up, and only rises as FICO goes down. Nothing forces
-that ordering, so it is evidence the two features are real. Best bucket to worst
-is 0.57% to 15.92%, a 28x spread.
+Risk climbs as LTV goes up and climbs as credit gets worse, with no reversals
+anywhere in the grid. Nothing in the code forces that ordering, so the fact that it
+came out clean is evidence both features are carrying real signal. Best bucket to
+worst is 0.57% to 15.92%, a 28x spread.
 
-FICO matters about twice as much as LTV. Across one row, worst LTV is 5x the best.
-Down one column, worst FICO is 11x the best.
+Credit matters about twice as much as equity. Move across one row and the worst
+LTV is 5x the best. Move down one column and the worst credit grade is 11x the
+best.
 
-All six Unknown buckets are under 500 loans, so they fell back to the grade rate.
-That gives 25 distinct scores, not 30.
+All six Unknown buckets hold fewer than 500 loans, so they fell back to the grade
+rate. That leaves 25 distinct scores, not 30.
 
 **The comparison:**
 
 | Scorer | AUC | Distinct scores |
 |---|---|---|
 | Naive lookup | 0.7131 | 25 |
-| CatBoost | 0.7750 | ~410k |
+| CatBoost | 0.7730 | ~410k |
 
-CatBoost wins by 0.0619. But a coin flip scores 0.5, so the real gap is 0.2131 vs
-0.2750: **two features in 25 buckets get 78% of what CatBoost gets from 26.**
+CatBoost wins by 0.0599. But AUC starts at 0.5, since that is what random guessing
+scores. So the honest comparison is the distance above random: 0.2131 against
+0.2730. **Two features in 25 buckets get 78% of what CatBoost gets from 23.**
 
-**The naive scorer is calibrated.** Predicted 0.034054, actual 0.034109. Not luck.
-It is a real default rate applied to loans from the same pool, so it cannot be off.
+**The naive scorer is calibrated too.** It predicts 0.034054 against an actual
+0.034109. That is not luck. It is a real historical default rate applied to loans
+from the same pool, so it almost has to come out right on average.
 
-That breaks our goal statement. We claim we will show calibrated probabilities
-beat a naive rule. Both are calibrated. The difference is **resolution**: the naive
-scorer gives every loan in a bucket the same number and cannot rank them against
-each other. CatBoost can.
+That breaks our goal statement. We said we would show that calibrated probabilities
+beat a naive rule. Both are calibrated. The real difference is **resolution**: the
+naive scorer hands every loan in a bucket the same number and cannot tell them
+apart. CatBoost gives each loan its own.
 
-Better claim, and more honest. The LP needs to tell loans apart, not just be right
-on average. Goal statement and shared docs need updating.
+That is a better claim and a more honest one. The optimizer does not need to be
+right on average, it needs to rank individual loans against each other. Goal
+statement and shared docs need updating.
 
 ## Save artifacts
 
@@ -1438,11 +1546,11 @@ shape: (3, 16)
 │ str         ┆ str   ┆ ---         ┆ str        ┆ f64      ┆ f64       ┆ f64       ┆ ---         ┆ ---         ┆ f64 ┆ f64         ┆ ---         ┆ f64         ┆ f32        ┆ f64         ┆ f64       │
 │             ┆       ┆ str         ┆            ┆          ┆           ┆           ┆ f64         ┆ f64         ┆     ┆             ┆ i8          ┆             ┆            ┆             ┆           │
 ╞═════════════╪═══════╪═════════════╪════════════╪══════════╪═══════════╪═══════════╪═════════════╪═════════════╪═════╪═════════════╪═════════════╪═════════════╪════════════╪═════════════╪═══════════╡
-│ 12313787084 ┆ TX    ┆ Good        ┆ OLTV >95   ┆ 180000.0 ┆ 360.0     ┆ 4.375     ┆ 51712.29474 ┆ 54000.0     ┆ 0.3 ┆ 0.082518    ┆ 1           ┆ 0.149415    ┆ 0.159556   ┆ 0.160999    ┆ 0.145756  │
+│ 12313787084 ┆ TX    ┆ Good        ┆ OLTV >95   ┆ 180000.0 ┆ 360.0     ┆ 4.375     ┆ 51712.29474 ┆ 54000.0     ┆ 0.3 ┆ 0.082518    ┆ 1           ┆ 0.155284    ┆ 0.175667   ┆ 0.161186    ┆ 0.161421  │
 │ 7           ┆       ┆             ┆            ┆          ┆           ┆           ┆ 6           ┆             ┆     ┆             ┆             ┆             ┆            ┆             ┆           │
-│ 10215712740 ┆ CA    ┆ Very Good   ┆ OLTV <=60  ┆ 203000.0 ┆ 360.0     ┆ 3.5       ┆ 46211.71616 ┆ 60900.0     ┆ 0.3 ┆ 0.012581    ┆ 0           ┆ 0.006058    ┆ 0.005009   ┆ 0.004935    ┆ 0.004361  │
+│ 10215712740 ┆ CA    ┆ Very Good   ┆ OLTV <=60  ┆ 203000.0 ┆ 360.0     ┆ 3.5       ┆ 46211.71616 ┆ 60900.0     ┆ 0.3 ┆ 0.012581    ┆ 0           ┆ 0.007494    ┆ 0.006123   ┆ 0.006633    ┆ 0.004785  │
 │ 7           ┆       ┆             ┆            ┆          ┆           ┆           ┆             ┆             ┆     ┆             ┆             ┆             ┆            ┆             ┆           │
-│ 13844415210 ┆ CA    ┆ Good        ┆ OLTV 70-80 ┆ 520000.0 ┆ 360.0     ┆ 4.375     ┆ 149391.0737 ┆ 156000.0    ┆ 0.3 ┆ 0.047938    ┆ 0           ┆ 0.010089    ┆ 0.00499    ┆ 0.005275    ┆ 0.031284  │
+│ 13844415210 ┆ CA    ┆ Good        ┆ OLTV 70-80 ┆ 520000.0 ┆ 360.0     ┆ 4.375     ┆ 149391.0737 ┆ 156000.0    ┆ 0.3 ┆ 0.047938    ┆ 0           ┆ 0.006756    ┆ 0.003605   ┆ 0.003682    ┆ 0.030996  │
 │ 4           ┆       ┆             ┆            ┆          ┆           ┆           ┆ 11          ┆             ┆     ┆             ┆             ┆             ┆            ┆             ┆           │
 └─────────────┴───────┴─────────────┴────────────┴──────────┴───────────┴───────────┴─────────────┴─────────────┴─────┴─────────────┴─────────────┴─────────────┴────────────┴─────────────┴───────────┘
 
@@ -1454,41 +1562,53 @@ shape: (3, 16)
 ```
 
 ```
+shape: (1, 2)
+┌───────────┬────────────────┐
+│ total_upb ┆ total_interest │
+│ ---       ┆ ---            │
+│ f64       ┆ f64            │
+╞═══════════╪════════════════╡
+│ 9.3782e10 ┆ 2.4930e10      │
+└───────────┴────────────────┘
+```
+
+```
 shape: (1, 3)
 ┌──────────┬─────────────┬─────────────────┐
 │ max_pd   ┆ above_40pct ┆ negative_return │
 │ ---      ┆ ---         ┆ ---             │
 │ f64      ┆ u32         ┆ u32             │
 ╞══════════╪═════════════╪═════════════════╡
-│ 0.559477 ┆ 31          ┆ 2               │
+│ 0.518429 ┆ 32          ┆ 0               │
 └──────────┴─────────────┴─────────────────┘
 ```
 
 ## Finding: nearly every loan is profitable, so the constraints carry the LP
 
-Max PD is 0.559. Break-even PD is `I / (L + I)`, roughly 47% for a 30-year and
-40% for a 15-year. Only 31 loans clear 40% PD, and only **2 have negative
+Max PD is 0.559. A loan breaks even when its expected interest exactly covers its
+expected loss, which works out to `I / (L + I)`: roughly 46% PD for a 30-year loan
+and 40% for a 15-year. Only 31 loans clear 40% PD, and only **2 have negative
 expected return**.
 
 **The objective almost never says "don't fund this."** With 409,924 of 409,926
 loans profitable, a budget-only LP would just buy the highest return per dollar
 until the money ran out.
 
-That matters because a budget-only fractional LP is a fractional knapsack, and
-fractional knapsack has a provably optimal greedy solution: sort by
+That matters more than it sounds. A budget-only fractional LP is a fractional
+knapsack, and fractional knapsack has a provably optimal greedy solution: sort by
 `c_i / ORIG_UPB_i`, fill until broke. Gurobi and a five-line sort would return the
 identical portfolio.
 
-**So the LP earns its keep entirely through the average-PD ceiling and the state
-caps.** Those break the greedy structure and no sort can reproduce them. Worth
-knowing before we design stage 3 rather than after.
+**So the LP earns its keep entirely through the average-PD ceiling, the state
+caps, and the equity floors.** Those break the greedy structure and no sort can
+reproduce them. Worth knowing before we design stage 3 rather than after.
 
-**It also sharpens the naive baseline comparison.** Our naive rule funds
-lowest-risk-first below a 3.4% cutoff. But low PD comes with low rates, since
-better credit gets better pricing. So the naive rule systematically funds the
-lowest-yielding loans and leaves money on the table, while the LP will fund
-riskier, higher-yielding paper that is still profitable.
+**It also sharpens the naive baseline comparison.** A naive rule that funds
+lowest-risk-first runs into a problem: low PD comes with low rates, since better
+credit gets better pricing. So risk-sorting systematically funds the
+lowest-yielding loans and leaves money on the table, while the LP funds riskier,
+higher-yielding paper that is still comfortably profitable.
 
-That is a third difference between the two strategies, stacked on top of
-resolution. The naive rule ignores return entirely. Which one drives the win is
-exactly what the 2x2 attribution would answer, if we want it.
+That is a second difference between the two strategies, stacked on top of
+resolution. Risk-sorting ignores return entirely. Which one drives the win is
+exactly what the 2x3 ablation in stage 3 answers.

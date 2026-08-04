@@ -100,8 +100,8 @@ shape: (2, 2)
 │ ---          ┆ ---     │
 │ i8           ┆ u32     │
 ╞══════════════╪═════════╡
-│ 1            ┆ 69886   │
 │ 0            ┆ 1976965 │
+│ 1            ┆ 69886   │
 └──────────────┴─────────┘
 ```
 
@@ -269,7 +269,7 @@ shape: (1, 1)
 
 Unweighted default rate: 3.41%
 Default rate by standard FICO band:
-shape: (5, 3)
+shape: (6, 3)
 ┌─────────────────────┬────────┬──────────────────┐
 │ fico_band           ┆ count  ┆ default_rate_pct │
 │ ---                 ┆ ---    ┆ ---              │
@@ -277,9 +277,10 @@ shape: (5, 3)
 ╞═════════════════════╪════════╪══════════════════╡
 │ Exceptional (800+)  ┆ 308739 ┆ 0.88             │
 │ Very Good (740-799) ┆ 967786 ┆ 1.98             │
-│ Poor (below 580)    ┆ 1574   ┆ 2.86             │
+│ Unknown (no score)  ┆ 1573   ┆ 2.8              │
 │ Good (670-739)      ┆ 623257 ┆ 5.31             │
 │ Fair (580-669)      ┆ 145495 ┆ 10.25            │
+│ Poor (below 580)    ┆ 1      ┆ 100.0            │
 └─────────────────────┴────────┴──────────────────┘
 ```
 
@@ -429,15 +430,16 @@ default risk.
 
 ```
 Interest rate vs default risk by FICO band:
-shape: (5, 4)
+shape: (6, 4)
 ┌─────────────────────┬────────┬──────────┬──────────────────┐
 │ fico_band           ┆ count  ┆ avg_rate ┆ default_rate_pct │
 │ ---                 ┆ ---    ┆ ---      ┆ ---              │
 │ str                 ┆ u32    ┆ f64      ┆ f64              │
 ╞═════════════════════╪════════╪══════════╪══════════════════╡
+│ Poor (below 580)    ┆ 1      ┆ 3.625    ┆ 100.0            │
 │ Exceptional (800+)  ┆ 308739 ┆ 3.97     ┆ 0.88             │
 │ Very Good (740-799) ┆ 967786 ┆ 4.064    ┆ 1.98             │
-│ Poor (below 580)    ┆ 1574   ┆ 4.198    ┆ 2.86             │
+│ Unknown (no score)  ┆ 1573   ┆ 4.199    ┆ 2.8              │
 │ Good (670-739)      ┆ 623257 ┆ 4.262    ┆ 5.31             │
 │ Fair (580-669)      ┆ 145495 ┆ 4.491    ┆ 10.25            │
 └─────────────────────┴────────┴──────────┴──────────────────┘
@@ -450,7 +452,8 @@ shape: (5, 4)
   falling between 3.875% and 4.5% (std 0.495). Full range is 1.79% to 6.125%.
 - The return side of the book varies little from loan to loan.
 
-**Rate vs risk by FICO band** (Poor band excluded as unreliable, n=1,574):
+**Rate vs risk by FICO band** (Poor band holds a single loan and is excluded;
+no-score loans are shown separately below):
 
 | FICO Band            | Count   | Avg Rate | Default Rate |
 |----------------------|---------|----------|--------------|
@@ -465,11 +468,21 @@ shape: (5, 4)
 - The extra interest on riskier loans does not compensate for the added default
   risk. Safer loans likely carry higher expected return once loss is netted out.
 
+**The no-score loans are worth keeping.** 1,573 loans have no FICO at all. They
+priced at 4.199%, between Good and Fair, but defaulted at only 2.8%, better than
+Good. Lenders treated them as moderately risky and they outperformed that. Small
+group, but it argues for carrying them with a missing-score flag rather than
+dropping them.
+
 ## Future Impact: Remaining Project
 
 **ML stage:**
 - FICO is a strong, clean predictor of default, which supports its weight as a
   feature. The steep risk gradient means the model has real signal to learn.
+- Rate is priced off the same risk the model is trying to predict, and the near-flat
+  rate gradient against an elevenfold default gradient shows how little independent
+  signal it carries. This is the case for keeping ORIG_RATE out of the feature set
+  and using it only for the LP income calculation.
 
 **LP stage:**
 - Expected return will likely favor high-FICO loans, since their low default
@@ -481,8 +494,7 @@ shape: (5, 4)
 
 **Simulation stage:**
 - The lopsided risk-return structure sets up a clear contrast between the
-  optimized portfolio and the naive baseline. Expect the optimized version
-
+  optimized portfolio and the naive baseline.
 
 ### Primary sources worth citing:
 
@@ -679,11 +691,11 @@ delinquency column becomes two things: the worst delinquency the loan ever
 reached, and the final default flag.
 
 ```
-Example loan: 117929036959
+Example loan: 133094666195
 ```
 
 ```
-Raw rows for this loan: 52
+Raw rows for this loan: 107
 ```
 
 ```
@@ -693,12 +705,12 @@ shape: (6, 5)
 │ ---          ┆ ---        ┆ ---      ┆ ---        ┆ ---           │
 │ str          ┆ str        ┆ str      ┆ str        ┆ str           │
 ╞══════════════╪════════════╪══════════╪════════════╪═══════════════╡
-│ 117929036959 ┆ 012017     ┆ 783      ┆ 00         ┆ null          │
-│ 117929036959 ┆ 012018     ┆ 783      ┆ 00         ┆ null          │
-│ 117929036959 ┆ 012019     ┆ 783      ┆ 00         ┆ null          │
-│ 117929036959 ┆ 012020     ┆ 783      ┆ 00         ┆ null          │
-│ 117929036959 ┆ 012021     ┆ 783      ┆ 00         ┆ null          │
-│ 117929036959 ┆ 022017     ┆ 783      ┆ 00         ┆ null          │
+│ 133094666195 ┆ 012018     ┆ 738      ┆ 00         ┆ null          │
+│ 133094666195 ┆ 012019     ┆ 738      ┆ 00         ┆ null          │
+│ 133094666195 ┆ 012020     ┆ 738      ┆ 00         ┆ null          │
+│ 133094666195 ┆ 012021     ┆ 738      ┆ 00         ┆ null          │
+│ 133094666195 ┆ 012022     ┆ 738      ┆ 00         ┆ null          │
+│ 133094666195 ┆ 012023     ┆ 738      ┆ 00         ┆ null          │
 └──────────────┴────────────┴──────────┴────────────┴───────────────┘
 ```
 
@@ -709,6 +721,6 @@ shape: (1, 5)
 │ ---          ┆ ---      ┆ ---          ┆ ---           ┆ ---          │
 │ str          ┆ str      ┆ i32          ┆ str           ┆ i8           │
 ╞══════════════╪══════════╪══════════════╪═══════════════╪══════════════╡
-│ 117929036959 ┆ 783      ┆ 0            ┆ 01            ┆ 0            │
+│ 133094666195 ┆ 738      ┆ 0            ┆ null          ┆ 0            │
 └──────────────┴──────────┴──────────────┴───────────────┴──────────────┘
 ```

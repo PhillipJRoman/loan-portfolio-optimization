@@ -1,0 +1,15 @@
+{
+  "model": "rule_based",
+  "saved_at": "2026-08-07T19:38:16.412408+00:00",
+  "auc_test": 0.7131391425248231,
+  "mean_pred": 0.034043329441917174,
+  "actual_rate": 0.03409481843667425,
+  "distinct_scores": 25,
+  "score_range": [
+    0.005698748510131108,
+    0.1591762199452166
+  ],
+  "buckets_total": 30,
+  "buckets_fellback": 6,
+  "notes": "No ML. Calibrated by construction, low resolution."
+}

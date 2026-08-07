@@ -1,0 +1,146 @@
+{
+  "model": "catboost",
+  "selected": false,
+  "saved_at": "2026-08-07T19:38:16.144420+00:00",
+  "auc_train": 0.7776559965885645,
+  "auc_test": 0.7717002018753908,
+  "auc_gap": 0.0059557947131737565,
+  "brier_test": 0.031523210843709216,
+  "ece_test": 0.0007200025862678938,
+  "ece_noise_floor": 0.0006,
+  "mean_pred": 0.03401363823270599,
+  "actual_rate": 0.03409481843667425,
+  "calibration_bins": [
+    {
+      "bin": 0,
+      "n": 40986,
+      "pred": 0.0031,
+      "obs": 0.0026,
+      "gap": -0.0005
+    },
+    {
+      "bin": 1,
+      "n": 40986,
+      "pred": 0.0063,
+      "obs": 0.0057,
+      "gap": -0.0006
+    },
+    {
+      "bin": 2,
+      "n": 40985,
+      "pred": 0.0095,
+      "obs": 0.0097,
+      "gap": 0.0002
+    },
+    {
+      "bin": 3,
+      "n": 40986,
+      "pred": 0.0134,
+      "obs": 0.013,
+      "gap": -0.0004
+    },
+    {
+      "bin": 4,
+      "n": 40985,
+      "pred": 0.0182,
+      "obs": 0.0183,
+      "gap": 0.0001
+    },
+    {
+      "bin": 5,
+      "n": 40986,
+      "pred": 0.0245,
+      "obs": 0.0242,
+      "gap": -0.0003
+    },
+    {
+      "bin": 6,
+      "n": 40986,
+      "pred": 0.033,
+      "obs": 0.0316,
+      "gap": -0.0014
+    },
+    {
+      "bin": 7,
+      "n": 40985,
+      "pred": 0.0453,
+      "obs": 0.0461,
+      "gap": 0.0008
+    },
+    {
+      "bin": 8,
+      "n": 40986,
+      "pred": 0.0651,
+      "obs": 0.0659,
+      "gap": 0.0008
+    },
+    {
+      "bin": 9,
+      "n": 40986,
+      "pred": 0.1216,
+      "obs": 0.1237,
+      "gap": 0.0021
+    }
+  ],
+  "params": {
+    "iterations": "400",
+    "learning_rate": "0.05",
+    "depth": "6"
+  },
+  "features": {
+    "numeric": [
+      "CSCORE_B",
+      "CSCORE_C",
+      "OLTV",
+      "DTI",
+      "ORIG_UPB",
+      "ORIG_TERM",
+      "NUM_BO"
+    ],
+    "flags": [
+      "is_first_time",
+      "is_homeready",
+      "is_hfa",
+      "has_coborrower",
+      "is_high_balance",
+      "is_relo"
+    ],
+    "categorical": [
+      "CHANNEL",
+      "PURPOSE",
+      "PROP",
+      "OCC_STAT",
+      "STATE"
+    ],
+    "order": [
+      "CSCORE_B",
+      "CSCORE_C",
+      "OLTV",
+      "DTI",
+      "ORIG_UPB",
+      "ORIG_TERM",
+      "NUM_BO",
+      "is_first_time",
+      "is_homeready",
+      "is_hfa",
+      "has_coborrower",
+      "is_high_balance",
+      "is_relo",
+      "CHANNEL",
+      "PURPOSE",
+      "PROP",
+      "OCC_STAT",
+      "STATE"
+    ],
+    "count": 18
+  },
+  "split": {
+    "seed": 591,
+    "rule": "hash(LOAN_ID) % 100: 0-59 train, 60-79 calib, 80-99 test",
+    "n_train": 1227374,
+    "n_calib": 409280,
+    "n_test": 409857
+  },
+  "calibration_applied": null,
+  "notes": "Raw predictions. Isotonic tested and rejected: worse ECE on all four models, lost AUC, produced PDs of exactly 0."
+}

@@ -1,0 +1,319 @@
+{
+  "saved_at": "2026-08-07T21:10:39.476652+00:00",
+  "pool": {
+    "file": "prod_pool.parquet",
+    "loans": 409857,
+    "total_upb": 93758914000.0,
+    "mean_pd": 0.03401565771265852,
+    "actual_default_rate": 0.03409481843667425
+  },
+  "constraints": {
+    "budget_frac": 0.1,
+    "budget": 9375891400.0,
+    "pd_ceiling": 0.03401565771265853,
+    "pd_ceiling_source": "the pool's own average PD, computed not chosen",
+    "state_cap": 0.06,
+    "state_cap_source": "swept 8/6/5 percent; 6 catches every concentrating state at the lowest cost that does so",
+    "first_time_floor": 0.2,
+    "homeready_floor": 0.0505,
+    "hfa_floor": 0.0256,
+    "floor_source": "each program's natural share of the pool"
+  },
+  "budget_only": {
+    "objective": 2825826169.246453,
+    "loans": 44734,
+    "return_on_funded": 0.3013928008217387,
+    "matches_greedy_sort": true
+  },
+  "base_solve": {
+    "objective": 2797086471.9528804,
+    "constraints_cost": 28739697.293572426,
+    "constraints_cost_pct": 0.010170369857264178,
+    "loans": 49366,
+    "partial_loans": 8,
+    "avg_pd": 0.024859677227671944,
+    "binding": {
+      "budget": 0.28142953354183703,
+      "state_CA": 0.029074063969783237,
+      "floor_homeready": -0.011354364437417719,
+      "state_AZ": 0.007667352438776587,
+      "state_WA": 0.0038947173697294057,
+      "state_CO": 0.0037296029905119488,
+      "state_TX": 0.0030451209926176115,
+      "state_FL": 0.0015386417992938606
+    },
+    "n_constraints": 59
+  },
+  "portfolios": [
+    {
+      "portfolio": "rule-based / risk-sort",
+      "expected_M": 2271.229248311966,
+      "real_M": 2271.967105883022,
+      "loans": 43431,
+      "avg_pd": 0.008810505689991146,
+      "actual_default": 0.008663176282097295,
+      "max_state": 0.2196728729174487,
+      "first_time": 0.1007512096396509,
+      "homeready": 0.011824369040793283,
+      "hfa": 0.0010098239832428094
+    },
+    {
+      "portfolio": "rule-based / greedy-return",
+      "expected_M": 2759.256697663683,
+      "real_M": 2723.8430262160655,
+      "loans": 44523,
+      "avg_pd": 0.04058684435368667,
+      "actual_default": 0.046580957624999794,
+      "max_state": 0.2798024089741483,
+      "first_time": 0.1898630139849956,
+      "homeready": 0.019982739987794654,
+      "hfa": 0.064337135986878
+    },
+    {
+      "portfolio": "CatBoost / risk-sort",
+      "expected_M": 2186.671287493929,
+      "real_M": 2190.4367461163024,
+      "loans": 44935,
+      "avg_pd": 0.00337177696198997,
+      "actual_default": 0.0026831582114954958,
+      "max_state": 0.1269931944817535,
+      "first_time": 0.11422913878887292,
+      "homeready": 0.004059027390185001,
+      "hfa": 0.0003049310063467672
+    },
+    {
+      "portfolio": "CatBoost / greedy-return",
+      "expected_M": 2825.826169246411,
+      "real_M": 2806.937772833125,
+      "loans": 44734,
+      "avg_pd": 0.02498788823093371,
+      "actual_default": 0.028130231969197082,
+      "max_state": 0.2816309284469741,
+      "first_time": 0.1917206506892774,
+      "homeready": 0.017983250104624718,
+      "hfa": 0.04302268262194248
+    },
+    {
+      "portfolio": "rule-based / LP",
+      "expected_M": 2734.007456484021,
+      "real_M": 2707.016506634354,
+      "loans": 48397,
+      "avg_pd": 0.04084353834694654,
+      "actual_default": 0.04536757795637437,
+      "max_state": 0.06,
+      "first_time": 0.205276750080531,
+      "homeready": 0.0505,
+      "hfa": 0.06320807000814878
+    },
+    {
+      "portfolio": "CatBoost / LP",
+      "expected_M": 2797.086471952836,
+      "real_M": 2778.787632333502,
+      "loans": 49366,
+      "avg_pd": 0.024859677227671944,
+      "actual_default": 0.02790235859600507,
+      "max_state": 0.06,
+      "first_time": 0.21974502773144322,
+      "homeready": 0.0505,
+      "hfa": 0.044694523658838456
+    }
+  ],
+  "floor_sweep": {
+    "note": "each floor moved alone, other two at base; cost in dollars against the base objective",
+    "base_objective": 2797086471.9528804,
+    "runs": [
+      {
+        "floor": "first_time",
+        "setting": 0.2,
+        "obj": 2797086471.9528804,
+        "cost_M": 0.0,
+        "avg_pd": 0.024859677227671944,
+        "n_binding": 8,
+        "pd_binds": false,
+        "loans": 49366
+      },
+      {
+        "floor": "first_time",
+        "setting": 0.25,
+        "obj": 2796727927.9611998,
+        "cost_M": 0.3585439916806221,
+        "avg_pd": 0.024887464154172013,
+        "n_binding": 9,
+        "pd_binds": false,
+        "loans": 49338
+      },
+      {
+        "floor": "first_time",
+        "setting": 0.3,
+        "obj": 2794491831.6673965,
+        "cost_M": 2.594640285483837,
+        "avg_pd": 0.02501781460189643,
+        "n_binding": 9,
+        "pd_binds": false,
+        "loans": 49358
+      },
+      {
+        "floor": "first_time",
+        "setting": 0.35,
+        "obj": 2790544639.4427433,
+        "cost_M": 6.541832510137081,
+        "avg_pd": 0.025051845438274798,
+        "n_binding": 9,
+        "pd_binds": false,
+        "loans": 49234
+      },
+      {
+        "floor": "first_time",
+        "setting": 0.4,
+        "obj": 2785054189.692727,
+        "cost_M": 12.032282260153293,
+        "avg_pd": 0.025152740338377215,
+        "n_binding": 9,
+        "pd_binds": false,
+        "loans": 49109
+      },
+      {
+        "floor": "first_time",
+        "setting": 0.45,
+        "obj": 2777993548.248925,
+        "cost_M": 19.092923703955172,
+        "avg_pd": 0.02519904415657106,
+        "n_binding": 9,
+        "pd_binds": false,
+        "loans": 48906
+      },
+      {
+        "floor": "homeready",
+        "setting": 0.0505,
+        "obj": 2797086471.9528804,
+        "cost_M": 0.0,
+        "avg_pd": 0.024859677227671944,
+        "n_binding": 8,
+        "pd_binds": false,
+        "loans": 49366
+      },
+      {
+        "floor": "homeready",
+        "setting": 0.07,
+        "obj": 2794512806.998511,
+        "cost_M": 2.573664954369545,
+        "avg_pd": 0.025061217761486225,
+        "n_binding": 8,
+        "pd_binds": false,
+        "loans": 49573
+      },
+      {
+        "floor": "homeready",
+        "setting": 0.09,
+        "obj": 2790945235.3605857,
+        "cost_M": 6.141236592294693,
+        "avg_pd": 0.025303703688534535,
+        "n_binding": 8,
+        "pd_binds": false,
+        "loans": 49695
+      },
+      {
+        "floor": "homeready",
+        "setting": 0.11,
+        "obj": 2786552464.9889026,
+        "cost_M": 10.534006963977813,
+        "avg_pd": 0.025563999453960585,
+        "n_binding": 8,
+        "pd_binds": false,
+        "loans": 49847
+      },
+      {
+        "floor": "homeready",
+        "setting": 0.13,
+        "obj": 2781412383.648835,
+        "cost_M": 15.6740883040452,
+        "avg_pd": 0.025861306433554984,
+        "n_binding": 8,
+        "pd_binds": false,
+        "loans": 49994
+      },
+      {
+        "floor": "homeready",
+        "setting": 0.15,
+        "obj": 2775556795.927943,
+        "cost_M": 21.529676024937153,
+        "avg_pd": 0.026170208459452195,
+        "n_binding": 8,
+        "pd_binds": false,
+        "loans": 50096
+      },
+      {
+        "floor": "hfa",
+        "setting": 0.0256,
+        "obj": 2797086471.9528804,
+        "cost_M": 0.0,
+        "avg_pd": 0.024859677227671944,
+        "n_binding": 8,
+        "pd_binds": false,
+        "loans": 49366
+      },
+      {
+        "floor": "hfa",
+        "setting": 0.04,
+        "obj": 2797086471.9528804,
+        "cost_M": 0.0,
+        "avg_pd": 0.024859677227671944,
+        "n_binding": 8,
+        "pd_binds": false,
+        "loans": 49366
+      },
+      {
+        "floor": "hfa",
+        "setting": 0.05,
+        "obj": 2796998226.136113,
+        "cost_M": 0.08824581676721573,
+        "avg_pd": 0.02506140239572281,
+        "n_binding": 9,
+        "pd_binds": false,
+        "loans": 49417
+      },
+      {
+        "floor": "hfa",
+        "setting": 0.06,
+        "obj": 2796308706.1094604,
+        "cost_M": 0.7777658434200286,
+        "avg_pd": 0.02546031753947952,
+        "n_binding": 9,
+        "pd_binds": false,
+        "loans": 49525
+      },
+      {
+        "floor": "hfa",
+        "setting": 0.07,
+        "obj": 2794948085.043818,
+        "cost_M": 2.1383869090623855,
+        "avg_pd": 0.02586325308275149,
+        "n_binding": 9,
+        "pd_binds": false,
+        "loans": 49640
+      },
+      {
+        "floor": "hfa",
+        "setting": 0.08,
+        "obj": 2792976114.0090113,
+        "cost_M": 4.110357943869114,
+        "avg_pd": 0.02632184120169703,
+        "n_binding": 9,
+        "pd_binds": false,
+        "loans": 49743
+      }
+    ],
+    "all_three_maxed": {
+      "settings": {
+        "first_time": 0.45,
+        "homeready": 0.15,
+        "hfa": 0.08
+      },
+      "sum_of_individual_costs_M": 44.73295767276144,
+      "actual_combined_cost_M": 36.64078609200048,
+      "overlap_M": 8.092171580760954,
+      "avg_pd": 0.027631750359355015,
+      "pd_ceiling_binds": false
+    }
+  }
+}

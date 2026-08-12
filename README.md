@@ -84,6 +84,7 @@ Polars, scikit-learn, XGBoost, LightGBM, CatBoost, Gurobi (gurobipy), NumPy, Mat
 - **Primary reference.** Sirignano, J., Tsoukalas, G., Giesecke, K. "Large-Scale Loan Portfolio Selection." SSRN 2641301, 2016.
 - **Vasicek model.** Vasicek, O. "Probability of Loss on Loan Portfolio." KMV Corporation, 1987.
 - **Basel framework.** Basel Committee on Banking Supervision. Basel II/III. Source of the 180-day default definition and the 0.15 asset correlation for residential mortgage exposures.
+- **National factor share.** Tidwell, A., Lu, Y., Lee, J., & Banerjee, P. (2023). "Nature of comovements in US state and MSA housing prices." Real Estate Economics, 51(4), 959–989. https://doi.org/10.1111/1540-6229.12428. Source of the 79/21 national-to-state split.
 - **Concentration limits.** Office of the Comptroller of the Currency. Comptroller's Handbook: Concentrations of Credit, 2020.
 - **Affordable housing goals.** Federal Housing Finance Agency. 12 CFR Part 1282.
 - **Data glossary.** Fannie Mae. Single-Family Loan Performance Data Glossary.
